@@ -1,20 +1,41 @@
 package com.retailiq.datasage
 
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.rememberNavController
+import com.retailiq.datasage.ui.auth.AuthNavHost
+import com.retailiq.datasage.ui.auth.AuthViewModel
+import com.retailiq.datasage.ui.navigation.MainNavigation
+import com.retailiq.datasage.ui.navigation.UserRole
+import com.retailiq.datasage.ui.theme.DataSageTheme
+import dagger.hilt.android.AndroidEntryPoint
 
-class MainActivity : AppCompatActivity() {
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        setContent {
+            val authViewModel: AuthViewModel = hiltViewModel()
+            var authenticated by remember { mutableStateOf(false) }
+            val navController = rememberNavController()
+
+            DataSageTheme {
+                if (!authenticated) {
+                    AuthNavHost(navController = navController, onFinish = { authenticated = true }, viewModel = authViewModel)
+                } else {
+                    val role = if (authViewModel.role().equals("owner", true)) UserRole.OWNER else UserRole.STAFF
+                    MainNavigation(role)
+                }
+            }
         }
     }
 }
+
