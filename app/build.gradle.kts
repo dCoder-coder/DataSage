@@ -2,12 +2,13 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.dagger.hilt)
 }
 
 android {
     namespace = "com.retailiq.datasage"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.retailiq.datasage"
@@ -91,10 +92,8 @@ dependencies {
     kapt(libs.room.compiler)
 
     implementation(libs.work.runtime.ktx)
-    implementation(libs.mpandroidchart)
+    implementation(libs.timber)
     implementation(libs.zxing.android.embedded)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.messaging)
     implementation(libs.coil.compose)
     implementation(libs.security.crypto)
     implementation(libs.biometric)

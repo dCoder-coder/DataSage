@@ -119,6 +119,7 @@ class AuthViewModel @Inject constructor(
     fun isSetupComplete(): Boolean = authRepository.isSetupComplete()
     fun role(): String = authRepository.getRole()
     fun completeSetup() = authRepository.markSetupComplete()
+    fun logout() = authRepository.logout()
 
     override fun onCleared() {
         otpCountdownJob?.cancel()

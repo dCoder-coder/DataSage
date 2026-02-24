@@ -1,5 +1,7 @@
 package com.retailiq.datasage.di
 
+import android.content.Context
+import com.google.gson.Gson
 import com.retailiq.datasage.BuildConfig
 import com.retailiq.datasage.core.AuthEvent
 import com.retailiq.datasage.core.AuthEventBus
@@ -11,7 +13,6 @@ import com.retailiq.datasage.data.api.CustomerApiService
 import com.retailiq.datasage.data.api.ForecastApiService
 import com.retailiq.datasage.data.api.InventoryApiService
 import com.retailiq.datasage.data.api.RefreshRequest
-import com.retailiq.datasage.data.api.ReportsApiService
 import com.retailiq.datasage.data.api.StoreApiService
 import com.retailiq.datasage.data.api.TransactionApiService
 import dagger.Module
@@ -25,11 +26,17 @@ import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import timber.log.Timber
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson = Gson()
+
     @Provides
     @Singleton
     fun provideOkHttp(tokenStore: TokenStore, authEventBus: AuthEventBus): OkHttpClient {
@@ -47,19 +54,32 @@ object NetworkModule {
                 val response = chain.proceed(request)
                 if (response.code != 401 || request.url.encodedPath.contains("/auth/refresh")) return response
                 response.close()
-                val refresh = tokenStore.getRefreshToken() ?: return chain.proceed(request)
+                val refresh = tokenStore.getRefreshToken() ?: run {
+                    authEventBus.emit(AuthEvent.SessionExpired)
+                    return chain.proceed(request)
+                }
                 return try {
-                    val retrofit = Retrofit.Builder().baseUrl(BuildConfig.API_BASE_URL).addConverterFactory(GsonConverterFactory.create()).build()
+                    val retrofit = Retrofit.Builder()
+                        .baseUrl(BuildConfig.API_BASE_URL)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
                     val authApi = retrofit.create(AuthApiService::class.java)
                     val tokenRes = runBlocking { authApi.refresh(RefreshRequest(refresh)).data }
                     if (tokenRes != null) {
                         tokenStore.saveTokens(tokenRes.accessToken, tokenRes.refreshToken)
-                        chain.proceed(request.newBuilder().header("Authorization", "Bearer ${tokenRes.accessToken}").build())
+                        Timber.d("Token refreshed successfully")
+                        chain.proceed(
+                            request.newBuilder()
+                                .header("Authorization", "Bearer ${tokenRes.accessToken}")
+                                .build()
+                        )
                     } else {
+                        Timber.w("Token refresh returned null")
                         authEventBus.emit(AuthEvent.SessionExpired)
                         chain.proceed(request)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Timber.e(e, "Token refresh failed")
                     tokenStore.clearTokens()
                     authEventBus.emit(AuthEvent.SessionExpired)
                     chain.proceed(request)
@@ -70,11 +90,17 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(refreshInterceptor)
-            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
+            .addInterceptor(HttpLoggingInterceptor { message ->
+                Timber.tag("HTTP").d(message)
+            }.apply {
+                level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
+                else HttpLoggingInterceptor.Level.NONE
+            })
             .build()
     }
 
-    @Provides @Singleton
+    @Provides
+    @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
         .client(okHttpClient)
@@ -89,5 +115,4 @@ object NetworkModule {
     @Provides @Singleton fun analyticsApi(retrofit: Retrofit): AnalyticsApiService = retrofit.create(AnalyticsApiService::class.java)
     @Provides @Singleton fun forecastApi(retrofit: Retrofit): ForecastApiService = retrofit.create(ForecastApiService::class.java)
     @Provides @Singleton fun alertsApi(retrofit: Retrofit): AlertsApiService = retrofit.create(AlertsApiService::class.java)
-    @Provides @Singleton fun reportsApi(retrofit: Retrofit): ReportsApiService = retrofit.create(ReportsApiService::class.java)
 }
