@@ -44,7 +44,7 @@ class AlertsViewModel @Inject constructor(
                     AlertItem(
                         id = map["alert_id"]?.toString() ?: "",
                         type = map["alert_type"]?.toString() ?: "",
-                        severity = map["severity"]?.toString() ?: "info",
+                        severity = map["priority"]?.toString() ?: "info",
                         message = map["message"]?.toString() ?: "",
                         createdAt = map["created_at"]?.toString() ?: ""
                     )

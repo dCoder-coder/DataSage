@@ -21,11 +21,20 @@ interface TransactionApiService {
         @Query("page_size") pageSize: Int = 50,
         @Query("start_date") startDate: String? = null,
         @Query("end_date") endDate: String? = null,
-        @Query("payment_mode") paymentMode: String? = null
+        @Query("payment_mode") paymentMode: String? = null,
+        @Query("customer_id") customerId: Int? = null,
+        @Query("min_amount") minAmount: Double? = null,
+        @Query("max_amount") maxAmount: Double? = null
     ): ApiResponse<List<TransactionSummary>>
 
     @GET("api/v1/transactions/{id}")
     suspend fun getTransaction(@Path("id") id: String): ApiResponse<TransactionDetail>
+
+    @POST("api/v1/transactions/{id}/return")
+    suspend fun processReturn(
+        @Path("id") id: String,
+        @Body request: ReturnTransactionRequest
+    ): ApiResponse<ReturnTransactionResponse>
 
     @GET("api/v1/transactions/summary/daily")
     suspend fun getDailySummary(
@@ -36,10 +45,12 @@ interface TransactionApiService {
 // ── Request Models ──
 
 data class CreateTransactionRequest(
-    val items: List<TransactionItemRequest>,
+    @SerializedName("transaction_id") val transactionId: String,
+    val timestamp: String,
     @SerializedName("payment_mode") val paymentMode: String,
     @SerializedName("customer_id") val customerId: Int? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    @SerializedName("line_items") val lineItems: List<TransactionItemRequest>
 )
 
 data class TransactionItemRequest(
@@ -51,6 +62,16 @@ data class TransactionItemRequest(
 
 data class BatchTransactionsRequest(val transactions: List<Map<String, Any>>)
 
+data class ReturnTransactionRequest(
+    val items: List<ReturnItem>
+)
+
+data class ReturnItem(
+    @SerializedName("product_id") val productId: Int,
+    @SerializedName("quantity_returned") val quantityReturned: Double,
+    val reason: String? = null
+)
+
 // ── Response Models ──
 
 data class CreateTransactionResponse(
@@ -58,9 +79,19 @@ data class CreateTransactionResponse(
 )
 
 data class BatchTransactionResponse(
-    val message: String? = null,
-    val created: Int = 0,
-    val failed: Int = 0
+    val total: Int = 0,
+    val succeeded: Int = 0,
+    val failed: Int = 0,
+    val errors: List<BatchError> = emptyList()
+)
+
+data class BatchError(
+    val index: Int = 0,
+    val error: String = ""
+)
+
+data class ReturnTransactionResponse(
+    @SerializedName("return_transaction_id") val returnTransactionId: String
 )
 
 data class TransactionSummary(
@@ -91,12 +122,12 @@ data class TransactionLineItem(
 )
 
 data class DailySummary(
-    @SerializedName("revenue_by_payment_mode") val revenueByPaymentMode: Map<String, Double> = emptyMap(),
-    @SerializedName("top_5_products") val topProducts: List<TopProductSummary> = emptyList(),
     @SerializedName("transaction_count") val transactionCount: Int = 0,
+    @SerializedName("returns_count") val returnsCount: Int = 0,
     @SerializedName("avg_basket") val avgBasket: Double = 0.0,
     @SerializedName("gross_profit") val grossProfit: Double = 0.0,
-    @SerializedName("returns_count") val returnsCount: Int = 0
+    @SerializedName("revenue_by_payment_mode") val revenueByPaymentMode: Map<String, Double> = emptyMap(),
+    @SerializedName("top_5_products") val topProducts: List<TopProductSummary> = emptyList()
 )
 
 data class TopProductSummary(

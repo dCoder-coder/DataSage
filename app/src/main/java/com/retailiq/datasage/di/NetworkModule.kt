@@ -12,6 +12,8 @@ import com.retailiq.datasage.data.api.AuthApiService
 import com.retailiq.datasage.data.api.CustomerApiService
 import com.retailiq.datasage.data.api.ForecastApiService
 import com.retailiq.datasage.data.api.InventoryApiService
+import com.retailiq.datasage.data.api.NlpQueryApiService
+import com.retailiq.datasage.data.api.RecommendationsApiService
 import com.retailiq.datasage.data.api.RefreshRequest
 import com.retailiq.datasage.data.api.StoreApiService
 import com.retailiq.datasage.data.api.TransactionApiService
@@ -115,4 +117,6 @@ object NetworkModule {
     @Provides @Singleton fun analyticsApi(retrofit: Retrofit): AnalyticsApiService = retrofit.create(AnalyticsApiService::class.java)
     @Provides @Singleton fun forecastApi(retrofit: Retrofit): ForecastApiService = retrofit.create(ForecastApiService::class.java)
     @Provides @Singleton fun alertsApi(retrofit: Retrofit): AlertsApiService = retrofit.create(AlertsApiService::class.java)
+    @Provides @Singleton fun recommendationsApi(retrofit: Retrofit): RecommendationsApiService = retrofit.create(RecommendationsApiService::class.java)
+    @Provides @Singleton fun nlpQueryApi(retrofit: Retrofit): NlpQueryApiService = retrofit.create(NlpQueryApiService::class.java)
 }

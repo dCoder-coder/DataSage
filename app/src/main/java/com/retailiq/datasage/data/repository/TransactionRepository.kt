@@ -11,6 +11,7 @@ import com.retailiq.datasage.data.api.DailySummary
 import com.retailiq.datasage.data.api.NetworkResult
 import com.retailiq.datasage.data.api.TransactionApiService
 import com.retailiq.datasage.data.api.TransactionSummary
+import com.retailiq.datasage.data.api.toUserMessage
 import com.retailiq.datasage.data.local.PendingTransaction
 import com.retailiq.datasage.data.local.PendingTransactionDao
 import com.retailiq.datasage.worker.SyncTransactionsWorker
@@ -41,7 +42,7 @@ class TransactionRepository @Inject constructor(
         if (response.success && response.data != null) {
             NetworkResult.Success(response.data)
         } else {
-            NetworkResult.Error(422, response.error?.message ?: "Failed to load summary")
+            NetworkResult.Error(422, response.error.toUserMessage())
         }
     }
 
@@ -57,7 +58,7 @@ class TransactionRepository @Inject constructor(
         if (response.success && response.data != null) {
             NetworkResult.Success(response.data)
         } else {
-            NetworkResult.Error(422, response.error?.message ?: "Failed to load transactions")
+            NetworkResult.Error(422, response.error.toUserMessage())
         }
     }
 

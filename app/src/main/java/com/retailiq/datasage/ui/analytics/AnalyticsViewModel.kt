@@ -30,7 +30,7 @@ class AnalyticsViewModel @Inject constructor(
 
     fun loadAnalytics() = viewModelScope.launch {
         _uiState.value = AnalyticsUiState.Loading
-        when (val result = repository.fetchDashboard()) {
+        when (val result = repository.getDashboard()) {
             is NetworkResult.Success -> _uiState.value = AnalyticsUiState.Loaded(result.data)
             is NetworkResult.Error -> {
                 Timber.w("Analytics load failed: %s", result.message)

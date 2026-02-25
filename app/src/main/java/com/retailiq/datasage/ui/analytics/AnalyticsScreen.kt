@@ -79,6 +79,8 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
 
 @Composable
 private fun AnalyticsContent(data: DashboardPayload, modifier: Modifier = Modifier) {
+    val kpis = data.todayKpis
+
     LazyColumn(
         modifier = modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -86,26 +88,26 @@ private fun AnalyticsContent(data: DashboardPayload, modifier: Modifier = Modifi
         item { Spacer(Modifier.height(8.dp)) }
 
         item {
-            Text("Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text("Today's KPIs", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Revenue", "₹${String.format("%,.0f", data.totalRevenue)}", Modifier.weight(1f))
-                StatCard("Profit", "₹${String.format("%,.0f", data.grossProfit)}", Modifier.weight(1f))
+                StatCard("Revenue", "₹${String.format("%,.0f", kpis.revenue)}", Modifier.weight(1f))
+                StatCard("Profit", "₹${String.format("%,.0f", kpis.profit)}", Modifier.weight(1f))
             }
         }
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Transactions", data.transactions.toString(), Modifier.weight(1f))
-                StatCard("Avg Basket", "₹${String.format("%.0f", data.avgBasket)}", Modifier.weight(1f))
+                StatCard("Transactions", kpis.transactions.toString(), Modifier.weight(1f))
+                StatCard("Avg Basket", "₹${String.format("%.0f", kpis.avgBasket)}", Modifier.weight(1f))
             }
         }
 
-        if (data.trend.isNotEmpty()) {
+        if (data.revenue7d.isNotEmpty()) {
             item {
-                Text("Revenue Trend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Revenue Trend (7 days)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
                 Card(
@@ -114,9 +116,9 @@ private fun AnalyticsContent(data: DashboardPayload, modifier: Modifier = Modifi
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
-                        data.trend.forEach { point ->
+                        data.revenue7d.forEach { point ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(point.day, style = MaterialTheme.typography.bodySmall)
+                                Text(point.date, style = MaterialTheme.typography.bodySmall)
                                 Text("₹${String.format("%,.0f", point.revenue)}", fontWeight = FontWeight.Medium)
                             }
                         }
@@ -125,17 +127,32 @@ private fun AnalyticsContent(data: DashboardPayload, modifier: Modifier = Modifi
             }
         }
 
-        if (data.topProducts.isNotEmpty()) {
+        // Alerts summary
+        if (data.alertsSummary.isNotEmpty()) {
             item {
-                Text("Top Products", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Alerts Summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    data.alertsSummary.forEach { (level, count) ->
+                        StatCard(level.replaceFirstChar { it.uppercase() }, count.toString(), Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+
+        if (data.topProductsToday.isNotEmpty()) {
+            item {
+                Text("Top Products Today", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(data.topProducts) { product ->
+                    items(data.topProductsToday) { product ->
                         Card(shape = RoundedCornerShape(12.dp)) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(product.name, fontWeight = FontWeight.Medium)
                                 Text("₹${String.format("%,.0f", product.revenue)}", style = MaterialTheme.typography.bodySmall)
+                                Text("Sold: ${product.unitsSold.toInt()}", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -155,8 +172,8 @@ private fun AnalyticsContent(data: DashboardPayload, modifier: Modifier = Modifi
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Text(insight.type.uppercase(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        Text(insight.headline, fontWeight = FontWeight.SemiBold)
-                        Text(insight.detail, style = MaterialTheme.typography.bodySmall)
+                        Text(insight.title, fontWeight = FontWeight.SemiBold)
+                        Text(insight.body, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

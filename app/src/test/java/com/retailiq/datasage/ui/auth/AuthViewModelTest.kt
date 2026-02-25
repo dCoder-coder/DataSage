@@ -6,6 +6,7 @@ import com.retailiq.datasage.data.api.AuthApiService
 import com.retailiq.datasage.data.api.AuthTokens
 import com.retailiq.datasage.data.api.ForgotPasswordRequest
 import com.retailiq.datasage.data.api.LoginRequest
+import com.retailiq.datasage.data.api.LogoutRequest
 import com.retailiq.datasage.data.api.OtpVerifyRequest
 import com.retailiq.datasage.data.api.RefreshRequest
 import com.retailiq.datasage.data.api.RegisterRequest
@@ -37,12 +38,13 @@ class AuthViewModelTest {
     }
 
     private class FakeAuthApi : AuthApiService {
-        override suspend fun register(request: RegisterRequest) = ApiResponse(true, AuthTokens("a", "b", "owner"), null, null, "")
-        override suspend fun verifyOtp(request: OtpVerifyRequest) = ApiResponse(true, AuthTokens("a", "b", "owner"), null, null, "")
-        override suspend fun login(request: LoginRequest) = ApiResponse(true, AuthTokens("a", "b", "owner"), null, null, "")
-        override suspend fun refresh(request: RefreshRequest) = ApiResponse(true, AuthTokens("a", "b", "owner"), null, null, "")
-        override suspend fun forgotPassword(request: ForgotPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null, "")
-        override suspend fun resetPassword(request: ResetPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null, "")
+        override suspend fun register(request: RegisterRequest) = ApiResponse(true, SimpleMessage("OTP sent"), null, null)
+        override suspend fun verifyOtp(request: OtpVerifyRequest) = ApiResponse(true, SimpleMessage("Verified"), null, null)
+        override suspend fun login(request: LoginRequest) = ApiResponse(true, AuthTokens("a", "b", 1, "owner", 1), null, null)
+        override suspend fun refresh(request: RefreshRequest) = ApiResponse(true, AuthTokens("a", "b", 1, "owner", 1), null, null)
+        override suspend fun logout(request: LogoutRequest?) = ApiResponse(true, SimpleMessage("ok"), null, null)
+        override suspend fun forgotPassword(request: ForgotPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null)
+        override suspend fun resetPassword(request: ResetPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null)
     }
 
     private data class FakeTokenStore(

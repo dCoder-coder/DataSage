@@ -42,7 +42,7 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() = viewModelScope.launch {
         _uiState.value = DashboardUiState.Loading
-        when (val result = repository.fetchDailySummary()) {
+        when (val result = repository.getDailySummary()) {
             is NetworkResult.Success -> {
                 _uiState.value = DashboardUiState.Loaded(result.data)
             }

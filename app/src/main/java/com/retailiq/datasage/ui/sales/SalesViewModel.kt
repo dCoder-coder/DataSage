@@ -11,6 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.UUID
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -101,7 +105,11 @@ class SalesViewModel @Inject constructor(
         _saleState.value = SaleUiState.Submitting
 
         val payload = mapOf<String, Any>(
-            "items" to items.map { item ->
+            "transaction_id" to UUID.randomUUID().toString(),
+            "timestamp" to DateTimeFormatter.ISO_LOCAL_DATE_TIME
+                .withZone(ZoneId.of("Asia/Kolkata"))
+                .format(Instant.now()),
+            "line_items" to items.map { item ->
                 mapOf(
                     "product_id" to item.product.productId,
                     "quantity" to item.quantity,

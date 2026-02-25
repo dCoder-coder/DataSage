@@ -6,6 +6,7 @@ import com.retailiq.datasage.data.api.AuthApiService
 import com.retailiq.datasage.data.api.AuthTokens
 import com.retailiq.datasage.data.api.ForgotPasswordRequest
 import com.retailiq.datasage.data.api.LoginRequest
+import com.retailiq.datasage.data.api.LogoutRequest
 import com.retailiq.datasage.data.api.NetworkResult
 import com.retailiq.datasage.data.api.OtpVerifyRequest
 import com.retailiq.datasage.data.api.RefreshRequest
@@ -30,13 +31,34 @@ class AuthRepositoryTest {
         assertEquals("access-1", tokenStore.access)
     }
 
+    @Test
+    fun register_returnsSuccess() = runBlocking {
+        val tokenStore = FakeTokenStore()
+        val repo = AuthRepository(FakeAuthApi(), tokenStore)
+
+        val result = repo.register("Test User", "9999999999", "My Store", "secret123")
+
+        assertTrue(result is NetworkResult.Success)
+    }
+
+    @Test
+    fun verifyOtp_returnsSuccess() = runBlocking {
+        val tokenStore = FakeTokenStore()
+        val repo = AuthRepository(FakeAuthApi(), tokenStore)
+
+        val result = repo.verifyOtp("9999999999", "123456")
+
+        assertTrue(result is NetworkResult.Success)
+    }
+
     private class FakeAuthApi : AuthApiService {
-        override suspend fun register(request: RegisterRequest) = ApiResponse(true, AuthTokens("a", "r", "owner"), null, null, "")
-        override suspend fun verifyOtp(request: OtpVerifyRequest) = ApiResponse(true, AuthTokens("a", "r", "owner"), null, null, "")
-        override suspend fun login(request: LoginRequest) = ApiResponse(true, AuthTokens("access-1", "refresh-1", "owner"), null, null, "")
-        override suspend fun refresh(request: RefreshRequest) = ApiResponse(true, AuthTokens("access-2", "refresh-2", "owner"), null, null, "")
-        override suspend fun forgotPassword(request: ForgotPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null, "")
-        override suspend fun resetPassword(request: ResetPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null, "")
+        override suspend fun register(request: RegisterRequest) = ApiResponse(true, SimpleMessage("OTP sent successfully."), null, null)
+        override suspend fun verifyOtp(request: OtpVerifyRequest) = ApiResponse(true, SimpleMessage("Account verified successfully."), null, null)
+        override suspend fun login(request: LoginRequest) = ApiResponse(true, AuthTokens("access-1", "refresh-1", 1, "owner", 1), null, null)
+        override suspend fun refresh(request: RefreshRequest) = ApiResponse(true, AuthTokens("access-2", "refresh-2", 1, "owner", 1), null, null)
+        override suspend fun logout(request: LogoutRequest?) = ApiResponse(true, SimpleMessage("ok"), null, null)
+        override suspend fun forgotPassword(request: ForgotPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null)
+        override suspend fun resetPassword(request: ResetPasswordRequest) = ApiResponse(true, SimpleMessage("ok"), null, null)
     }
 
     private data class FakeTokenStore(

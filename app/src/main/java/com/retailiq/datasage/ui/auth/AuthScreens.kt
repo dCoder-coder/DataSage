@@ -41,7 +41,7 @@ fun AuthNavHost(navController: NavHostController, onFinish: () -> Unit, viewMode
         composable("splash") { SplashScreen(viewModel) { hasToken, setupComplete -> navController.navigate(if (!hasToken) "login" else if (setupComplete) "done" else "setup") } }
         composable("login") { LoginScreen(viewModel, onRegister = { navController.navigate("register") }, onForgot = { navController.navigate("forgot") }, onLoginSuccess = { setupComplete -> navController.navigate(if (setupComplete) "done" else "setup") }) }
         composable("register") { RegisterScreen(viewModel) { mobile -> navController.navigate("otp/$mobile") } }
-        composable("otp/{mobile}") { backStack -> OTPVerifyScreen(viewModel, backStack.arguments?.getString("mobile").orEmpty()) { setupComplete -> navController.navigate(if (setupComplete) "done" else "setup") } }
+        composable("otp/{mobile}") { backStack -> OTPVerifyScreen(viewModel, backStack.arguments?.getString("mobile").orEmpty()) { navController.navigate("login") } }
         composable("forgot") { ForgotPasswordScreen(viewModel) { mobile -> navController.navigate("reset/$mobile") } }
         composable("reset/{mobile}") { backStack -> ResetPasswordScreen(viewModel, backStack.arguments?.getString("mobile").orEmpty()) { navController.navigate("login") } }
         composable("setup") { SetupWizardScreen(viewModel) { navController.navigate("done") } }
@@ -114,7 +114,7 @@ fun RegisterScreen(viewModel: AuthViewModel, onOtp: (String) -> Unit) {
 }
 
 @Composable
-fun OTPVerifyScreen(viewModel: AuthViewModel, mobile: String, onDone: (Boolean) -> Unit) {
+fun OTPVerifyScreen(viewModel: AuthViewModel, mobile: String, onDone: () -> Unit) {
     var otp by remember { mutableStateOf("") }
     val seconds by viewModel.otpSecondsRemaining.collectAsState()
     val resendCount by viewModel.resendCount.collectAsState()
@@ -123,7 +123,7 @@ fun OTPVerifyScreen(viewModel: AuthViewModel, mobile: String, onDone: (Boolean) 
         Text("Verify OTP")
         OutlinedTextField(otp, { if (it.length <= 6) otp = it }, label = { Text("6-digit OTP") })
         Text("Time remaining: ${seconds}s")
-        Button(onClick = { viewModel.verifyOtp(mobile, otp) { _, setupComplete -> onDone(setupComplete) } }, enabled = otp.length == 6) { Text("Verify") }
+        Button(onClick = { viewModel.verifyOtp(mobile, otp) { onDone() } }, enabled = otp.length == 6) { Text("Verify") }
         TextButton(onClick = { viewModel.resendOtp(mobile) }, enabled = viewModel.canResendOtp()) { Text("Resend OTP (${3 - resendCount} left)") }
     }
 }
@@ -140,13 +140,13 @@ fun ForgotPasswordScreen(viewModel: AuthViewModel, onOtpSent: (String) -> Unit) 
 
 @Composable
 fun ResetPasswordScreen(viewModel: AuthViewModel, mobile: String, onDone: () -> Unit) {
-    var otp by remember { mutableStateOf("") }
+    var resetToken by remember { mutableStateOf("") }
     var pwd by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Reset Password")
-        OutlinedTextField(otp, { otp = it }, label = { Text("OTP") })
+        OutlinedTextField(resetToken, { resetToken = it }, label = { Text("Reset Token") })
         OutlinedTextField(pwd, { pwd = it }, label = { Text("New Password") }, visualTransformation = PasswordVisualTransformation())
-        Button(onClick = { viewModel.resetPassword(mobile, otp, pwd) { onDone() } }) { Text("Reset") }
+        Button(onClick = { viewModel.resetPassword(resetToken, pwd) { onDone() } }) { Text("Reset") }
     }
 }
 

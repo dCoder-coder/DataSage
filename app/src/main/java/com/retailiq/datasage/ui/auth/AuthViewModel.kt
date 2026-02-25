@@ -82,12 +82,13 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun verifyOtp(mobile: String, otp: String, onSuccess: (String, Boolean) -> Unit) = viewModelScope.launch {
+    /** After OTP verification the account is activated. User must login separately. */
+    fun verifyOtp(mobile: String, otp: String, onSuccess: () -> Unit) = viewModelScope.launch {
         _uiState.value = AuthUiState.Loading
         when (val result = authRepository.verifyOtp(mobile, otp)) {
             is NetworkResult.Success -> {
-                _uiState.value = AuthUiState.Success("OTP verified")
-                onSuccess(result.data, authRepository.isSetupComplete())
+                _uiState.value = AuthUiState.Success("Account verified. Please login.")
+                onSuccess()
             }
             is NetworkResult.Error -> _uiState.value = AuthUiState.Error(result.message)
             is NetworkResult.Loading -> Unit
@@ -103,9 +104,9 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun resetPassword(mobile: String, otp: String, newPassword: String, onSuccess: () -> Unit) = viewModelScope.launch {
+    fun resetPassword(token: String, newPassword: String, onSuccess: () -> Unit) = viewModelScope.launch {
         _uiState.value = AuthUiState.Loading
-        when (val result = authRepository.resetPassword(mobile, otp, newPassword)) {
+        when (val result = authRepository.resetPassword(token, newPassword)) {
             is NetworkResult.Success -> {
                 _uiState.value = AuthUiState.Success("Password reset")
                 onSuccess()

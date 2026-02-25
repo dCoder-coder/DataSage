@@ -93,7 +93,7 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                                     ) {
                                         Column(Modifier.weight(1f)) {
                                             Text(product.name, fontWeight = FontWeight.SemiBold)
-                                            product.categoryName?.let {
+                                            product.skuCode?.let {
                                                 Text(it, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                                             }
                                             Text(
@@ -105,7 +105,7 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                                         Column(horizontalAlignment = Alignment.End) {
                                             val stockColor = when {
                                                 product.currentStock <= 0 -> MaterialTheme.colorScheme.error
-                                                product.currentStock < 10 -> Color(0xFFFF9800)
+                                                product.currentStock <= product.reorderLevel -> Color(0xFFFF9800)
                                                 else -> Color(0xFF4CAF50)
                                             }
                                             Text(

@@ -9,6 +9,7 @@ import com.retailiq.datasage.data.api.OtpVerifyRequest
 import com.retailiq.datasage.data.api.RefreshRequest
 import com.retailiq.datasage.data.api.RegisterRequest
 import com.retailiq.datasage.data.api.ResetPasswordRequest
+import com.retailiq.datasage.data.api.toUserMessage
 import java.net.SocketTimeoutException
 import javax.inject.Inject
 
@@ -18,31 +19,33 @@ class AuthRepository @Inject constructor(
 ) {
     suspend fun login(mobile: String, password: String): NetworkResult<String> = safeCall {
         val response = authApi.login(LoginRequest(mobile, password))
-        val tokens = response.data ?: return@safeCall NetworkResult.Error(422, response.error?.message ?: "Invalid credentials")
+        val tokens = response.data ?: return@safeCall NetworkResult.Error(422, response.error.toUserMessage())
         tokenStore.saveTokens(tokens.accessToken, tokens.refreshToken)
         NetworkResult.Success(tokens.role)
     }
 
     suspend fun register(fullName: String, mobile: String, store: String, password: String): NetworkResult<Unit> = safeCall {
-        val response = authApi.register(RegisterRequest(fullName, mobile, store, password))
-        if (!response.success) NetworkResult.Error(422, response.error?.message ?: "Registration failed") else NetworkResult.Success(Unit)
+        val response = authApi.register(RegisterRequest(fullName = fullName, mobileNumber = mobile, password = password, storeName = store))
+        if (!response.success) NetworkResult.Error(422, response.error.toUserMessage()) else NetworkResult.Success(Unit)
     }
 
-    suspend fun verifyOtp(mobile: String, otp: String): NetworkResult<String> = safeCall {
+    suspend fun verifyOtp(mobile: String, otp: String): NetworkResult<Unit> = safeCall {
         val response = authApi.verifyOtp(OtpVerifyRequest(mobile, otp))
-        val tokens = response.data ?: return@safeCall NetworkResult.Error(422, response.error?.message ?: "OTP invalid")
-        tokenStore.saveTokens(tokens.accessToken, tokens.refreshToken)
-        NetworkResult.Success(tokens.role)
+        if (!response.success) {
+            NetworkResult.Error(422, response.error.toUserMessage())
+        } else {
+            NetworkResult.Success(Unit)
+        }
     }
 
     suspend fun forgotPassword(mobile: String): NetworkResult<Unit> = safeCall {
         val response = authApi.forgotPassword(ForgotPasswordRequest(mobile))
-        if (!response.success) NetworkResult.Error(422, response.error?.message ?: "Request failed") else NetworkResult.Success(Unit)
+        if (!response.success) NetworkResult.Error(422, response.error.toUserMessage()) else NetworkResult.Success(Unit)
     }
 
-    suspend fun resetPassword(mobile: String, otp: String, newPassword: String): NetworkResult<Unit> = safeCall {
-        val response = authApi.resetPassword(ResetPasswordRequest(mobile, otp, newPassword))
-        if (!response.success) NetworkResult.Error(422, response.error?.message ?: "Reset failed") else NetworkResult.Success(Unit)
+    suspend fun resetPassword(token: String, newPassword: String): NetworkResult<Unit> = safeCall {
+        val response = authApi.resetPassword(ResetPasswordRequest(token, newPassword))
+        if (!response.success) NetworkResult.Error(422, response.error.toUserMessage()) else NetworkResult.Success(Unit)
     }
 
     suspend fun refreshTokens(): Boolean {
