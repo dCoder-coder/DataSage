@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.security.crypto)
     implementation(libs.biometric)
     implementation(libs.kotlinx.coroutines.android)
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

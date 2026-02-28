@@ -1,5 +1,6 @@
 package com.retailiq.datasage.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,15 +41,51 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.retailiq.datasage.ui.worker.SyncStatusViewModel
 
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.runtime.LaunchedEffect
+import com.retailiq.datasage.data.model.ReceiptTemplateRequest
+import com.retailiq.datasage.ui.viewmodel.ReceiptsViewModel
+import com.retailiq.datasage.ui.viewmodel.SaveUiState
+import com.retailiq.datasage.ui.viewmodel.TemplateUiState
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    userRole: String = "STAFF",
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
+    receiptsViewModel: ReceiptsViewModel = hiltViewModel(),
+    onNavigateToStaffPerformance: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val pending by syncViewModel.pending.collectAsState()
     val failed by syncViewModel.failed.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    val templateState by receiptsViewModel.templateState.collectAsState()
+    val templateSaveState by receiptsViewModel.templateSaveState.collectAsState()
+
+    var headerText by remember { mutableStateOf("") }
+    var footerText by remember { mutableStateOf("") }
+    var showGstin by remember { mutableStateOf(false) }
+    var paperWidth by remember { mutableStateOf("58mm") }
+
+    LaunchedEffect(Unit) {
+        receiptsViewModel.loadTemplate()
+    }
+
+    LaunchedEffect(templateState) {
+        if (templateState is TemplateUiState.Success) {
+            val tmpl = (templateState as TemplateUiState.Success).template
+            headerText = tmpl.header
+            footerText = tmpl.footer
+            showGstin = tmpl.showGstin
+            paperWidth = tmpl.paperWidth
+        }
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) }
@@ -94,7 +131,95 @@ fun SettingsScreen(
                 }
             }
 
+            // Receipt & Printer Settings
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("Receipt & Printer", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    if (templateState is TemplateUiState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally).size(24.dp))
+                    } else {
+                        OutlinedTextField(
+                            value = headerText,
+                            onValueChange = { headerText = it },
+                            label = { Text("Receipt Header") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = footerText,
+                            onValueChange = { footerText = it },
+                            label = { Text("Receipt Footer") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                            Text("Show GSTIN")
+                            Switch(checked = showGstin, onCheckedChange = { showGstin = it })
+                        }
+
+                        Text("Paper Width")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(selected = paperWidth == "58mm", onClick = { paperWidth = "58mm" }, label = { Text("58mm") })
+                            FilterChip(selected = paperWidth == "80mm", onClick = { paperWidth = "80mm" }, label = { Text("80mm") })
+                        }
+
+                        Button(
+                            onClick = {
+                                receiptsViewModel.saveTemplate(
+                                    ReceiptTemplateRequest(headerText, footerText, showGstin, paperWidth)
+                                )
+                            },
+                            modifier = Modifier.align(Alignment.End),
+                            enabled = templateSaveState != SaveUiState.Saving
+                        ) {
+                            if (templateSaveState == SaveUiState.Saving) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                            } else {
+                                Text(if (templateSaveState == SaveUiState.Saved) "Saved ✓" else "Save")
+                            }
+                        }
+                        
+                        if (templateSaveState is SaveUiState.Error) {
+                            Text(
+                                (templateSaveState as SaveUiState.Error).message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.weight(1f))
+
+            if (userRole.equals("OWNER", ignoreCase = true)) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToStaffPerformance() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text("Staff Management", fontWeight = FontWeight.SemiBold)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
 
             // Logout
             Button(

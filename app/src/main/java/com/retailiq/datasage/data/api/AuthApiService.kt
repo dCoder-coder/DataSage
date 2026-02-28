@@ -10,7 +10,7 @@ interface AuthApiService {
     suspend fun register(@Body request: RegisterRequest): ApiResponse<SimpleMessage>
 
     @POST("api/v1/auth/verify-otp")
-    suspend fun verifyOtp(@Body request: OtpVerifyRequest): ApiResponse<SimpleMessage>
+    suspend fun verifyOtp(@Body request: OtpVerifyRequest): ApiResponse<AuthTokens>
 
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): ApiResponse<AuthTokens>

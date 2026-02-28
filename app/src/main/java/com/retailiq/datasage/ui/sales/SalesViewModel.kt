@@ -51,6 +51,9 @@ class SalesViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    var lastTransactionId: String? = null
+        private set
+
     init {
         loadProducts()
     }
@@ -122,6 +125,7 @@ class SalesViewModel @Inject constructor(
 
         try {
             val txId = transactionRepository.createSaleOffline(payload)
+            lastTransactionId = txId
             _saleState.value = SaleUiState.Success(txId)
             _cart.value = emptyList()
             Timber.d("Sale submitted offline: %s", txId)

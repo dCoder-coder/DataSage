@@ -6,9 +6,10 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.ui.graphics.vector.ImageVector
 
-enum class UserRole { OWNER, STAFF }
+enum class UserRole { OWNER, STAFF, VIEWER }
 
 data class BottomNavItem(val route: String, val label: String, val icon: ImageVector)
 
@@ -17,6 +18,7 @@ fun tabsForRole(role: UserRole): List<BottomNavItem> = if (role == UserRole.OWNE
         BottomNavItem("home", "Home", Icons.Default.Dashboard),
         BottomNavItem("sales", "Sales", Icons.Default.PointOfSale),
         BottomNavItem("inventory", "Inventory", Icons.Default.Inventory),
+        BottomNavItem("suppliers", "Suppliers", Icons.Outlined.LocalShipping),
         BottomNavItem("analytics", "Analytics", Icons.Default.Analytics),
         BottomNavItem("more", "More", Icons.Default.Menu)
     )
@@ -27,3 +29,4 @@ fun tabsForRole(role: UserRole): List<BottomNavItem> = if (role == UserRole.OWNE
         BottomNavItem("inventory", "Inventory", Icons.Default.Inventory)
     )
 }
+

@@ -1,15 +1,55 @@
+# ── Build ──────────────────────────────────────
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
+.gradle/
+/build/
+app/build/
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ── IDE (Android Studio / IntelliJ) ───────────
+/.idea/caches/
+/.idea/libraries/
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+/.idea/deploymentTargetSelector.xml
+/.idea/misc.xml
+/.idea/.name
+/.idea/compiler.xml
+/.idea/markdown.xml
+/.idea/gradle.xml
+/.idea/
+.vscode/
+
+# ── Local config ──────────────────────────────
 local.properties
+
+# ── JVM crash logs ────────────────────────────
+hs_err_pid*.log
+replay_pid*.log
+
+# ── Build / compile / test output logs ────────
+build_output*.log
+compile_err*.txt
+compile_output*.txt
+test_output*.log
+test_output*.txt
+
+# ── Kotlin ────────────────────────────────────
+.kotlin/
+
+# ── OS junk ───────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Coverage ──────────────────────────────────
+*.exec
+jacoco/

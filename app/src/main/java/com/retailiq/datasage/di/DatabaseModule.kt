@@ -3,6 +3,7 @@ package com.retailiq.datasage.di
 import android.content.Context
 import androidx.room.Room
 import com.retailiq.datasage.data.local.AppDatabase
+import com.retailiq.datasage.data.local.AnalyticsSnapshotDao
 import com.retailiq.datasage.data.local.PendingTransactionDao
 import dagger.Module
 import dagger.Provides
@@ -24,4 +25,7 @@ object DatabaseModule {
 
     @Provides
     fun providePendingTxDao(db: AppDatabase): PendingTransactionDao = db.pendingTransactionDao()
+
+    @Provides
+    fun provideAnalyticsSnapshotDao(db: AppDatabase): AnalyticsSnapshotDao = db.analyticsSnapshotDao()
 }

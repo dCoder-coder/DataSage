@@ -11,6 +11,8 @@ At a high level, DataSage supports:
 - **Authentication lifecycle**: register, OTP verification, login, forgot/reset password, token refresh, logout.
 - **Role-aware navigation**: owner and staff see different tabs.
 - **Daily operations**: sales creation, inventory browsing/search, dashboard and analytics views.
+- **Hardware Integrations**: ZXing barcode scanning for fast checkout, and Bluetooth thermal receipt printing via background polling.
+- **Rich Data Visualizations**: Custom Jetpack Compose wrappers around MPAndroidChart for dashboard analytics and demand forecasting.
 - **Offline-first billing**: sales are stored locally first, then synced in batches when online.
 - **Operational visibility**: pending/failed sync counters and retry from Settings.
 
@@ -90,15 +92,18 @@ app/src/main/java/com/retailiq/datasage/
 ### 4.2 Authentication & session management
 
 - `AuthManager` implements `TokenStore` using `EncryptedSharedPreferences`.
-- Access token + refresh token + role are saved on login.
+- Access token + refresh token + role are saved on login **and on OTP verification** (auto-login after signup).
 - Network layer injects Authorization header from `TokenStore`.
+- **Session persistence across app restarts**: On startup, `SplashScreen` proactively calls `validateSession()` which attempts a token refresh via `/auth/refresh`. This ensures expired access tokens are renewed before any API call, preventing 401 errors after restarts.
 - A refresh interceptor handles `401` responses:
   - attempts refresh via `/auth/refresh`
   - saves new tokens when successful
   - emits `SessionExpired` via `AuthEventBus` when refresh fails
+  - **does not clear tokens** on transient network errors (only on explicit logout or invalid refresh token)
+- **Auto-login after signup**: After OTP verification, the backend returns auth tokens. The app saves them immediately and navigates to setup/dashboard — no manual re-login required.
 - UI can react to session expiry globally.
 
-**Why**: central token handling prevents duplicated auth logic across feature modules.
+**Why**: central token handling prevents duplicated auth logic across feature modules. Proactive session validation ensures seamless restarts.
 
 ### 4.3 Networking module (`di/NetworkModule`)
 
@@ -114,15 +119,13 @@ Provides:
 
 **Why**: shared client configuration guarantees consistent auth, logging, and timeout behavior.
 
-### 4.4 Local persistence + offline queue
+### 4.4 Local persistence + offline queue & analytics caching
 
-- Room table: `pending_transactions`
-- Fields include `payloadJson`, `status` (`pending/synced/failed`), `retryCount`, timestamp.
-- `TransactionRepository.createSaleOffline(...)` always stores sales locally first and triggers one-time sync.
-- `SyncTransactionsWorker` reads pending rows, uploads in batches, then marks rows `synced`, `pending` (retry), or `failed`.
-- Failed items can be retried from Settings via `SyncStatusViewModel.retryFailed()`.
+- **Transaction Queue**: Room table `pending_transactions` queues new sales offline, using `SyncTransactionsWorker` to upload them sequentially.
+- **Analytics Snapshot**: Room table `analytics_snapshot` caches the latest dashboard/analytics metadata (via `SnapshotDto`). `SnapshotSyncWorker` fetches new data periodically (every 6 hours).
+- **Offline Logic**: Pure Kotlin class `LocalKpiEngine` handles metric recalculation (like week-over-week trends) from cached objects. Failed transactions can be explicitly retried from Settings.
 
-**Why**: sales data capture is decoupled from network conditions, reducing operational downtime risk.
+**Why**: decoupled network conditions reduce operational downtime risk and provide instantaneous startup rendering.
 
 ### 4.5 Navigation + role gating
 
@@ -133,26 +136,44 @@ Provides:
 
 **Why**: role-appropriate UI keeps operational focus and avoids accidental access to owner-only flows.
 
+### 4.6 Hardware Integrations (Camera & Bluetooth)
+
+- **Barcode Scanning**: Uses ZXing's `IntentIntegrator` via `ScanContract`. The data layer (`ReceiptsRepository.lookupBarcode`) maps the scan payload directly to the cart.
+- **Bluetooth Printing**: Uses a `ModalBottomSheet` to discover `BluetoothAdapter.bondedDevices`. The UI submits a print job via API and actively polls `/receipts/print/{jobId}` until `COMPLETED` or `FAILED`.
+- Settings screen stores default customizable templates.
+
+### 4.7 Charting & Data Visualizations (MPAndroidChart)
+
+- Wraps `MPAndroidChart` native Views inside Compose's `AndroidView` within the `ui/components/ChartComponents.kt` library.
+- Safely handles lifecycle cleanup and list recycling using `onReset` blocks to clear old datasets.
+- Maps domain-specific models like `CategoryBreakdown` into `PieEntry` datasets locally to keep UI declarative.
+- **Real-time data**: `DashboardRepository` fetches category breakdown (`GET /api/v1/analytics/category-breakdown`) and payment modes (`GET /api/v1/analytics/payment-modes`) from the backend. Both `DashboardViewModel` and `AnalyticsViewModel` expose these as `StateFlow` for reactive UI binding.
+
 ---
 
 ## 5) Feature modules (functional view)
 
 ### Auth (`ui/auth`, `data/repository/AuthRepository`)
 
-- Register + OTP verification
+- Register + OTP verification (auto-login: tokens saved on OTP success)
 - Login
 - Forgot/reset password
 - Setup wizard completion flag
-- Token-backed session state (`hasToken`, `role`, `logout`)
+- Token-backed session state (`hasToken`, `validateSession`, `role`, `logout`)
+- Proactive session refresh on app startup via `SplashScreen`
 
 ### Dashboard (`ui/dashboard`, `data/repository/DashboardRepository`)
 
-- Fetches daily summary + dashboard analytics payload
+- Fetches daily summary + dashboard analytics payload (`DashboardPayload`).
+- Uses `ConnectivityObserver` to seamlessly fall back to an internal Room snapshot, displaying a yellow offline capability banner and using `LocalKpiEngine` algorithms for metrics.
+- Integrates `RevenueLineChart`, `PaymentModeBarChart`, and `CategoryPieChart` for rich analytical overviews.
 - Shows pending/failed local sync counters for awareness
 
 ### Sales (`ui/sales`, `data/repository/TransactionRepository`)
 
 - Product selection/cart from cached inventory
+- ZXing Barcode Scanning integration for 1-tap fast cart additions
+- `PrintReceiptBottomSheet` triggered after an offline sale is saved, invoking remote Bluetooth thermal print jobs
 - Builds transaction payload and saves offline immediately
 - Sync runs asynchronously in background worker
 
@@ -163,16 +184,37 @@ Provides:
 
 ### Analytics (`ui/analytics`)
 
-- Uses dashboard analytics data for chart/summary style screens
+- Uses dashboard analytics data for chart/summary style screens. Features `ContributionBarChart` & `CategoryPieChart` breakdowns.
+- Shares the Room `analytics_snapshot` table as a fallback, utilizing `LocalKpiEngine`'s logic to render trends dynamically, even seamlessly substituting complex network calls.
+
+### Forecast (`ui/forecast`, `data/repository/ForecastRepository`)
+
+- Projects demand for items and stores utilizing a dual-dataset `ForecastLineChart` featuring historical actuals alongside predicted ranges and confidence bounds.
 
 ### Alerts (`ui/alerts`)
 
 - Pulls inventory alerts from backend and maps generic payload fields to UI model
+- Provides direct "Create PO" call-to-action for critical items, navigating to the pre-filled PO creation flow
+
+### Suppliers & Purchase Orders (`ui/supplier`, `ui/purchaseorder`, `data/repository/SupplierRepository`)
+
+- Displays comprehensive Supplier directory including analytical insights (lead time, fill rate).
+- Supplier Profile UI detailing associated products, contact info, and recent PO history timeline.
+- End-to-end Purchase Order creation flow supporting line item entry from inventory and draft/send capabilities.
+- Optimistic UI updates during PO sending.
+- Goods Receipt UI for reconciling delivered quantities against expected inventory, finalizing the inbound supply chain loop.
+
+### Staff Management & Session Tracking (`ui/staff`, `data/repository/StaffRepository`)
+
+- Introduces UX routing based on JWT `role` claims: `OWNER`, `STAFF`, and `VIEWER`.
+- **Staff Session Banner**: Appears above the Dashboard for active staff, allowing session initialization and tracking formatted elapsed time via background coroutine polling. Summarizes session on end (total tx/revenue).
+- **Staff Performance Dashboard**: An OWNER-only insight screen detailing per-employee metrics (target tracking, transaction volume, revenue, discount limits). Uses bottom-sheet forms to dispatch daily operational goals (`DailyTargetRequest`).
 
 ### Settings + Worker status (`ui/settings`, `ui/worker`)
 
 - Displays pending and failed sync counts
 - Triggers retry for failed items
+- Customizable "Receipt & Printer" card for modifying header/footer templates
 - Logout action with unsynced warning
 
 ---
@@ -316,9 +358,10 @@ Design recommendations for extension:
 
 ### Offline/online behavior
 
-- Connectivity observer continuously emits internet capability state.
-- Offline banner indicates degraded connectivity.
-- Sales continue offline and are sync-queued.
+- Connectivity observer continuously emits internet capability state to ViewModels (`DashboardViewModel`, `AnalyticsViewModel`).
+- Real-time yellow offline banner indicates degraded connectivity and timestamps showing cache staleness for dashboards.
+- Dashboards fall back instantly to locally-cached Room snapshots parsed via `LocalKpiEngine`.
+- Sales continue offline and are sync-queued via WorkManager.
 
 ### Sync behavior
 
@@ -337,15 +380,15 @@ Design recommendations for extension:
 
 ## 12) Security and data notes
 
-- Tokens are stored in encrypted preferences.
+- Tokens are stored in encrypted preferences (`EncryptedSharedPreferences` with AES-256).
 - Role is decoded from JWT payload and cached for UI routing.
 - Authorization headers are auto-attached by interceptor.
-- Token refresh is transparent where possible.
+- Token refresh is transparent: the interceptor retries on 401, and `SplashScreen` proactively refreshes on startup.
+- Transient network errors during refresh do not destroy the session — tokens are preserved and refresh is retried on next request.
 
 Potential hardening opportunities:
 
 - Add certificate pinning in OkHttp for production.
-- Add stricter token expiry pre-check before request dispatch.
 - Add SQLCipher (if at-rest DB encryption becomes mandatory).
 
 ---

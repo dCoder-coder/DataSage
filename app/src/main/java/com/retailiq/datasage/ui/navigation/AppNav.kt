@@ -62,14 +62,71 @@ fun MainNavigation(
         Column(Modifier.padding(padding)) {
             OfflineBanner(isOffline = !isOnline)
             NavHost(navController, startDestination = "home") {
-                composable("home") { DashboardScreen() }
+                composable("home") { DashboardScreen(role = role) }
                 composable("sales") { SalesScreen() }
                 composable("inventory") { InventoryScreen() }
                 composable("analytics") { AnalyticsScreen() }
-                composable("more") { SettingsScreen(onLogout = onLogout) }
+                composable("suppliers") { 
+                    com.retailiq.datasage.ui.supplier.SupplierListScreen(
+                        onNavigateToSupplier = { id -> navController.navigate("suppliers/$id") }
+                    ) 
+                }
+                composable("suppliers/{supplierId}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("supplierId")?.toIntOrNull() ?: return@composable
+                    com.retailiq.datasage.ui.supplier.SupplierProfileScreen(
+                        supplierId = id,
+                        onNavigateBack = { navController.popBackStack() },
+                        onCreatePo = { supId -> navController.navigate("purchaseorders/create?supplierId=$supId") },
+                        onViewAllPos = { supId -> navController.navigate("purchase-orders?supplierId=$supId") }
+                    )
+                }
+                composable("purchase-orders?supplierId={supplierId}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("supplierId")?.toIntOrNull()
+                    com.retailiq.datasage.ui.purchaseorder.PurchaseOrderListScreen(
+                        supplierId = id,
+                        onNavigateBack = { navController.popBackStack() },
+                        onCreatePo = { supId -> 
+                            val query = if (supId != null) "?supplierId=$supId" else ""
+                            navController.navigate("purchaseorders/create$query") 
+                        },
+                        onNavigateToReceive = { poId -> navController.navigate("purchase-orders/$poId/receive") }
+                    )
+                }
+                composable("purchaseorders/create?supplierId={supplierId}&prefillProductId={prefillProductId}") { backStackEntry ->
+                    val supId = backStackEntry.arguments?.getString("supplierId")?.toIntOrNull()
+                    val prodId = backStackEntry.arguments?.getString("prefillProductId")?.toIntOrNull()
+                    com.retailiq.datasage.ui.purchaseorder.CreatePurchaseOrderScreen(
+                        prefillSupplierId = supId,
+                        prefillProductId = prodId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable("purchase-orders/{poId}/receive") { backStackEntry ->
+                    val poId = backStackEntry.arguments?.getString("poId")?.toIntOrNull() ?: return@composable
+                    com.retailiq.datasage.ui.purchaseorder.GoodsReceiptScreen(
+                        poId = poId,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable("more") { 
+                    SettingsScreen(
+                        userRole = role.name,
+                        onNavigateToStaffPerformance = { navController.navigate("staff/performance") },
+                        onLogout = onLogout
+                    ) 
+                }
+                composable("staff/performance") {
+                    com.retailiq.datasage.ui.staff.StaffPerformanceScreen(
+                        userRole = role.name,
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
                 composable("customers") { CustomersScreen() }
-                composable("alerts") { AlertsScreen() }
+                composable("alerts") { AlertsScreen(
+                    onNavigateToCreatePo = { prodId -> navController.navigate("purchaseorders/create?prefillProductId=$prodId") }
+                ) }
             }
         }
     }
 }
+

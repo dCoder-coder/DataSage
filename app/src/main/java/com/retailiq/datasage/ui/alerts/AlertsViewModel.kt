@@ -17,7 +17,8 @@ data class AlertItem(
     val type: String = "",
     val severity: String = "info",
     val message: String = "",
-    val createdAt: String = ""
+    val createdAt: String = "",
+    val metadata: Map<String, Any>? = null
 )
 
 sealed class AlertsUiState {
@@ -46,7 +47,8 @@ class AlertsViewModel @Inject constructor(
                         type = map["alert_type"]?.toString() ?: "",
                         severity = map["priority"]?.toString() ?: "info",
                         message = map["message"]?.toString() ?: "",
-                        createdAt = map["created_at"]?.toString() ?: ""
+                        createdAt = map["created_at"]?.toString() ?: "",
+                        metadata = map["metadata"] as? Map<String, Any>
                     )
                 }
                 _uiState.value = AlertsUiState.Loaded(alerts)

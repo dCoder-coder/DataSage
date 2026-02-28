@@ -50,20 +50,88 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import com.retailiq.datasage.data.api.Product
+import com.retailiq.datasage.ui.viewmodel.BarcodeLookupUiState
+import com.retailiq.datasage.ui.viewmodel.ReceiptsViewModel
+import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SalesScreen(viewModel: SalesViewModel = hiltViewModel()) {
+fun SalesScreen(
+    viewModel: SalesViewModel = hiltViewModel(),
+    receiptsViewModel: ReceiptsViewModel = hiltViewModel()
+) {
     val products by viewModel.products.collectAsState()
     val cart by viewModel.cart.collectAsState()
     val saleState by viewModel.saleState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     var selectedPaymentMode by remember { mutableStateOf("cash") }
 
+    val barcodeLookupState by receiptsViewModel.barcodeLookupState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        if (result.contents != null) {
+            receiptsViewModel.lookupBarcode(result.contents)
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            scanLauncher.launch(ScanOptions().apply { setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES) })
+        } else {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Camera permission is required to scan barcodes") }
+        }
+    }
+
+    // Handle barcode lookup success
+    LaunchedEffect(barcodeLookupState) {
+        when (val state = barcodeLookupState) {
+            is BarcodeLookupUiState.Success -> {
+                val productDto = state.product
+                val product = Product(
+                    productId = productDto.productId,
+                    name = productDto.productName,
+                    categoryId = 0, // Placeholder mapping since BarcodeProductDto doesn't supply it
+                    sellingPrice = productDto.price,
+                    costPrice = productDto.price,
+                    currentStock = productDto.currentStock,
+                    reorderLevel = 0.0
+                )
+                viewModel.addToCart(product)
+                receiptsViewModel.resetBarcodeLookup()
+            }
+            is BarcodeLookupUiState.Error -> {
+                coroutineScope.launch { snackbarHostState.showSnackbar(state.message) }
+                receiptsViewModel.resetBarcodeLookup()
+            }
+            else -> Unit
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(title = { Text("New Sale") })
+            TopAppBar(
+                title = { Text("New Sale") },
+                actions = {
+                    IconButton(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Barcode")
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -240,5 +308,19 @@ fun SalesScreen(viewModel: SalesViewModel = hiltViewModel()) {
             title = { Text("Error") },
             text = { Text((saleState as SaleUiState.Error).message) }
         )
+    }
+
+    // Show Print Receipt Bottom Sheet
+    if (saleState is SaleUiState.Success) {
+        viewModel.lastTransactionId?.let { txId ->
+            PrintReceiptBottomSheet(
+                transactionId = txId,
+                receiptsViewModel = receiptsViewModel,
+                onDismiss = { viewModel.resetSaleState() } // Resetting sale state closes everything
+            )
+        } ?: run {
+            // Fallback if lastTransactionId is somehow null
+            viewModel.resetSaleState()
+        }
     }
 }

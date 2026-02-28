@@ -29,13 +29,11 @@ class AuthRepository @Inject constructor(
         if (!response.success) NetworkResult.Error(422, response.error.toUserMessage()) else NetworkResult.Success(Unit)
     }
 
-    suspend fun verifyOtp(mobile: String, otp: String): NetworkResult<Unit> = safeCall {
+    suspend fun verifyOtp(mobile: String, otp: String): NetworkResult<String> = safeCall {
         val response = authApi.verifyOtp(OtpVerifyRequest(mobile, otp))
-        if (!response.success) {
-            NetworkResult.Error(422, response.error.toUserMessage())
-        } else {
-            NetworkResult.Success(Unit)
-        }
+        val tokens = response.data ?: return@safeCall NetworkResult.Error(422, response.error.toUserMessage())
+        tokenStore.saveTokens(tokens.accessToken, tokens.refreshToken)
+        NetworkResult.Success(tokens.role)
     }
 
     suspend fun forgotPassword(mobile: String): NetworkResult<Unit> = safeCall {
@@ -58,6 +56,12 @@ class AuthRepository @Inject constructor(
     }
 
     fun hasValidSession(): Boolean = tokenStore.getAccessToken() != null
+
+    suspend fun validateSession(): Boolean {
+        if (tokenStore.getAccessToken() == null) return false
+        if (tokenStore.getRefreshToken() == null) return false
+        return refreshTokens()
+    }
     fun isSetupComplete(): Boolean = tokenStore.isSetupComplete()
     fun markSetupComplete() = tokenStore.markSetupComplete()
     fun getRole(): String = tokenStore.getRole()

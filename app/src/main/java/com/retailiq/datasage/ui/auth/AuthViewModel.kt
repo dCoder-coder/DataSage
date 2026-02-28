@@ -82,13 +82,13 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    /** After OTP verification the account is activated. User must login separately. */
-    fun verifyOtp(mobile: String, otp: String, onSuccess: () -> Unit) = viewModelScope.launch {
+    /** After OTP verification the account is activated and tokens are returned (auto-login). */
+    fun verifyOtp(mobile: String, otp: String, onSuccess: (String) -> Unit) = viewModelScope.launch {
         _uiState.value = AuthUiState.Loading
         when (val result = authRepository.verifyOtp(mobile, otp)) {
             is NetworkResult.Success -> {
-                _uiState.value = AuthUiState.Success("Account verified. Please login.")
-                onSuccess()
+                _uiState.value = AuthUiState.Success("Account verified")
+                onSuccess(result.data)
             }
             is NetworkResult.Error -> _uiState.value = AuthUiState.Error(result.message)
             is NetworkResult.Loading -> Unit
@@ -117,6 +117,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun hasToken(): Boolean = authRepository.hasValidSession()
+    suspend fun validateSession(): Boolean = authRepository.validateSession()
     fun isSetupComplete(): Boolean = authRepository.isSetupComplete()
     fun role(): String = authRepository.getRole()
     fun completeSetup() = authRepository.markSetupComplete()

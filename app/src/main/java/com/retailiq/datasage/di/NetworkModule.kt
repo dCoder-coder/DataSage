@@ -13,8 +13,11 @@ import com.retailiq.datasage.data.api.CustomerApiService
 import com.retailiq.datasage.data.api.ForecastApiService
 import com.retailiq.datasage.data.api.InventoryApiService
 import com.retailiq.datasage.data.api.NlpQueryApiService
+import com.retailiq.datasage.data.api.OfflineApiService
 import com.retailiq.datasage.data.api.RecommendationsApiService
 import com.retailiq.datasage.data.api.RefreshRequest
+import com.retailiq.datasage.data.api.ReceiptsApiService
+import com.retailiq.datasage.data.api.StaffApiService
 import com.retailiq.datasage.data.api.StoreApiService
 import com.retailiq.datasage.data.api.TransactionApiService
 import dagger.Module
@@ -82,7 +85,6 @@ object NetworkModule {
                     }
                 } catch (e: Exception) {
                     Timber.e(e, "Token refresh failed")
-                    tokenStore.clearTokens()
                     authEventBus.emit(AuthEvent.SessionExpired)
                     chain.proceed(request)
                 }
@@ -119,4 +121,8 @@ object NetworkModule {
     @Provides @Singleton fun alertsApi(retrofit: Retrofit): AlertsApiService = retrofit.create(AlertsApiService::class.java)
     @Provides @Singleton fun recommendationsApi(retrofit: Retrofit): RecommendationsApiService = retrofit.create(RecommendationsApiService::class.java)
     @Provides @Singleton fun nlpQueryApi(retrofit: Retrofit): NlpQueryApiService = retrofit.create(NlpQueryApiService::class.java)
+    @Provides @Singleton fun receiptsApi(retrofit: Retrofit): ReceiptsApiService = retrofit.create(ReceiptsApiService::class.java)
+    @Provides @Singleton fun supplierApi(retrofit: Retrofit): com.retailiq.datasage.data.api.SupplierApiService = retrofit.create(com.retailiq.datasage.data.api.SupplierApiService::class.java)
+    @Provides @Singleton fun staffApi(retrofit: Retrofit): StaffApiService = retrofit.create(StaffApiService::class.java)
+    @Provides @Singleton fun offlineApi(retrofit: Retrofit): OfflineApiService = retrofit.create(OfflineApiService::class.java)
 }

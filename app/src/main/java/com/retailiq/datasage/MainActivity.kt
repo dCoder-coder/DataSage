@@ -40,7 +40,12 @@ class MainActivity : ComponentActivity() {
                         viewModel = authViewModel
                     )
                 } else {
-                    val role = if (authViewModel.role().equals("owner", true)) UserRole.OWNER else UserRole.STAFF
+                    val roleStr = authViewModel.role()?.lowercase()
+                    val role = when (roleStr) {
+                        "owner" -> UserRole.OWNER
+                        "viewer" -> UserRole.VIEWER
+                        else -> UserRole.STAFF
+                    }
                     MainNavigation(
                         role = role,
                         connectivityObserver = connectivityObserver,

@@ -16,7 +16,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,7 +44,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
+fun AlertsScreen(
+    viewModel: AlertsViewModel = hiltViewModel(),
+    onNavigateToCreatePo: (Int) -> Unit = {}
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -73,7 +79,18 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.alerts) { alert ->
-                            AlertCard(alert)
+                            AlertCard(
+                                alert = alert,
+                                onCreatePo = { 
+                                    // Parse potential product ID from metadata or message string if backend sends it. 
+                                    // Normally metadata would have a struct like `{"po_action": true, "product_id": 12}`
+                                    // As a fallback, assuming if it's there we can link, but for now just pass null to open empty PO.
+                                    val prodId = alert.metadata?.get("product_id") as? Int ?: alert.metadata?.get("product_id")?.toString()?.toDoubleOrNull()?.toInt()
+                                    // The requirement: "Tapping 'Create PO' navigates with prefillProductId set if available"
+                                    if (prodId != null) onNavigateToCreatePo(prodId)
+                                    else onNavigateToCreatePo(-1) // Default or empty behavior depending on route constraints
+                                }
+                            )
                         }
                         item { Spacer(Modifier.height(16.dp)) }
                     }
@@ -95,7 +112,7 @@ fun AlertsScreen(viewModel: AlertsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun AlertCard(alert: AlertItem) {
+private fun AlertCard(alert: AlertItem, onCreatePo: () -> Unit = {}) {
     val severityColor = when (alert.severity.lowercase()) {
         "critical" -> Color(0xFFD32F2F)
         "high" -> Color(0xFFFF9800)
@@ -108,25 +125,39 @@ private fun AlertCard(alert: AlertItem) {
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Surface(
-                modifier = Modifier.size(10.dp),
-                shape = CircleShape,
-                color = severityColor
-            ) {}
-            Spacer(Modifier.width(12.dp))
-            Column {
-                Text(
-                    alert.type.replaceFirstChar { it.uppercase() },
-                    fontWeight = FontWeight.SemiBold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(alert.message, style = MaterialTheme.typography.bodySmall)
-                Text(
-                    alert.severity.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = severityColor,
-                    fontWeight = FontWeight.Bold
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Surface(
+                    modifier = Modifier.size(10.dp),
+                    shape = CircleShape,
+                    color = severityColor
+                ) {}
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        alert.type.replaceFirstChar { it.uppercase() },
+                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(alert.message, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        alert.severity.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = severityColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            // Render action chip if po_action flag is true
+            val isPoAction = alert.metadata?.get("po_action") == true || alert.metadata?.get("po_action") == "true"
+            if (isPoAction) {
+                Spacer(Modifier.height(8.dp))
+                AssistChip(
+                    onClick = onCreatePo,
+                    label = { Text("Create PO") },
+                    leadingIcon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) },
+                    colors = AssistChipDefaults.assistChipColors(labelColor = MaterialTheme.colorScheme.primary, leadingIconContentColor = MaterialTheme.colorScheme.primary)
                 )
             }
         }
