@@ -19,6 +19,8 @@ import com.retailiq.datasage.data.local.AnalyticsSnapshot
 import com.retailiq.datasage.data.local.AnalyticsSnapshotDao
 import com.retailiq.datasage.data.local.LocalKpiEngine
 import com.retailiq.datasage.data.model.SnapshotDto
+import com.retailiq.datasage.data.model.LoyaltyAnalyticsDto
+import com.retailiq.datasage.data.repository.LoyaltyRepository
 
 sealed class AnalyticsUiState {
     data object Loading : AnalyticsUiState()
@@ -30,6 +32,7 @@ sealed class AnalyticsUiState {
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val repository: DashboardRepository,
+    private val loyaltyRepo: LoyaltyRepository,
     private val connectivityObserver: ConnectivityObserver,
     private val snapshotDao: AnalyticsSnapshotDao,
     private val gson: Gson
@@ -39,6 +42,9 @@ class AnalyticsViewModel @Inject constructor(
 
     private val _categoryBreakdown = MutableStateFlow<List<CategoryBreakdown>>(emptyList())
     val categoryBreakdown: StateFlow<List<CategoryBreakdown>> = _categoryBreakdown.asStateFlow()
+
+    private val _loyaltyAnalytics = MutableStateFlow<LoyaltyAnalyticsDto?>(null)
+    val loyaltyAnalytics: StateFlow<LoyaltyAnalyticsDto?> = _loyaltyAnalytics.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -82,6 +88,13 @@ class AnalyticsViewModel @Inject constructor(
         when (val catResult = repository.getCategoryBreakdown()) {
             is NetworkResult.Success -> _categoryBreakdown.value = catResult.data
             is NetworkResult.Error -> Timber.w("Category breakdown failed: %s", catResult.message)
+            is NetworkResult.Loading -> Unit
+        }
+
+        // Fetch Loyalty Analytics
+        when (val lRes = loyaltyRepo.getAnalytics()) {
+            is NetworkResult.Success -> _loyaltyAnalytics.value = lRes.data
+            is NetworkResult.Error -> Timber.w("Loyalty analytics failed: %s", lRes.message)
             is NetworkResult.Loading -> Unit
         }
     }

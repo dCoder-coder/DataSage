@@ -34,7 +34,7 @@ import com.retailiq.datasage.ui.viewmodel.SupplierViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePurchaseOrderScreen(
-    prefillSupplierId: Int? = null,
+    prefillSupplierId: String? = null,
     prefillProductId: Int? = null,
     supplierVm: SupplierViewModel = hiltViewModel(),
     inventoryVm: InventoryViewModel = hiltViewModel(),

@@ -27,12 +27,14 @@ class TransactionRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gson: Gson
 ) {
-    /** Save sale offline first, then enqueue sync */
+    /** Save sale offline first, then sync immediately + enqueue background worker as backup */
     suspend fun createSaleOffline(payload: Map<String, Any>): String {
         val tx = PendingTransaction(payloadJson = gson.toJson(payload))
         pendingDao.insert(tx)
         Timber.d("Sale saved offline: %s", tx.id)
         enqueueSync()
+        // Try immediate sync so we don't rely solely on WorkManager
+        trySyncNow()
         return tx.id
     }
 
@@ -78,6 +80,56 @@ class TransactionRepository @Inject constructor(
         if (failed.isNotEmpty()) {
             Timber.d("Retrying %d failed transactions", failed.size)
             enqueueSync()
+            trySyncNow()
+        }
+    }
+
+    /** Direct immediate sync — bypasses WorkManager to sync right now */
+    suspend fun trySyncNow() {
+        try {
+            // Rescue any failed transactions first
+            pendingDao.resetAllFailedToPending()
+            val pending = pendingDao.getByStatus("pending")
+            if (pending.isEmpty()) return
+            Timber.d("trySyncNow: %d pending transactions", pending.size)
+
+            val mapType = object : com.google.gson.reflect.TypeToken<Map<String, Any>>() {}.type
+            val payloads = pending.mapNotNull { tx ->
+                try {
+                    val map = gson.fromJson<Map<String, Any>>(tx.payloadJson, mapType)
+                        .toMutableMap()
+                    map.remove("loyalty_points_redeemed")
+                    map.remove("loyalty_discount_amount")
+                    // Fix lowercase payment_mode from old payloads (backend requires CASH, UPI, etc.)
+                    val mode = map["payment_mode"]
+                    if (mode is String) map["payment_mode"] = mode.uppercase()
+                    map
+                } catch (e: Exception) {
+                    Timber.e(e, "trySyncNow: bad payload %s", tx.id)
+                    null
+                }
+            }
+            if (payloads.isEmpty()) return
+
+            val response = transactionApi.createTransactionBatch(
+                com.retailiq.datasage.data.api.BatchTransactionsRequest(payloads)
+            )
+            val code = response.code()
+            Timber.d("trySyncNow response: %d", code)
+
+            when (code) {
+                200, 201, 409 -> {
+                    pending.forEach { pendingDao.updateStatus(it.id, "synced") }
+                    pendingDao.deleteSynced()
+                    Timber.d("trySyncNow: synced %d transactions", pending.size)
+                }
+                else -> {
+                    val errorBody = response.errorBody()?.string()
+                    Timber.w("trySyncNow failed: code=%d body=%s", code, errorBody)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.w(e, "trySyncNow failed (will retry via WorkManager)")
         }
     }
 

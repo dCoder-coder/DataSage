@@ -18,21 +18,21 @@ import retrofit2.http.Query
 
 interface ReceiptsApiService {
 
-    @GET("receipts/template")
-    suspend fun getTemplate(): Response<ReceiptTemplateDto>
+    @GET("api/v1/receipts/template")
+    suspend fun getTemplate(): Response<ApiResponse<ReceiptTemplateDto>>
 
-    @PUT("receipts/template")
-    suspend fun updateTemplate(@Body body: ReceiptTemplateRequest): Response<ReceiptTemplateDto>
+    @PUT("api/v1/receipts/template")
+    suspend fun updateTemplate(@Body body: ReceiptTemplateRequest): Response<ApiResponse<ReceiptTemplateDto>>
 
-    @POST("receipts/print")
-    suspend fun createPrintJob(@Body body: PrintJobRequest): Response<PrintJobResponse>
+    @POST("api/v1/receipts/print")
+    suspend fun createPrintJob(@Body body: PrintJobRequest): Response<ApiResponse<PrintJobResponse>>
 
-    @GET("receipts/print/{jobId}")
-    suspend fun pollPrintJob(@Path("jobId") jobId: String): Response<PrintJobStatusDto>
+    @GET("api/v1/receipts/print/{jobId}")
+    suspend fun pollPrintJob(@Path("jobId") jobId: String): Response<ApiResponse<PrintJobStatusDto>>
 
-    @GET("barcodes/lookup")
-    suspend fun lookupBarcode(@Query("value") value: String): Response<BarcodeProductDto>
+    @GET("api/v1/barcodes/lookup")
+    suspend fun lookupBarcode(@Query("value") value: String): Response<ApiResponse<BarcodeProductDto>>
 
-    @POST("barcodes")
-    suspend fun registerBarcode(@Body body: RegisterBarcodeRequest): Response<BarcodeDto>
+    @POST("api/v1/barcodes")
+    suspend fun registerBarcode(@Body body: RegisterBarcodeRequest): Response<ApiResponse<BarcodeDto>>
 }

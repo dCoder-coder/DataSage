@@ -20,31 +20,31 @@ interface SupplierApiService {
     suspend fun getSuppliers(): ApiResponse<List<SupplierDto>>
 
     @GET("api/v1/suppliers/{id}")
-    suspend fun getSupplierProfile(@Path("id") id: Int): ApiResponse<SupplierProfileDto>
+    suspend fun getSupplierProfile(@Path("id") id: String): ApiResponse<SupplierProfileDto>
 
     @POST("api/v1/suppliers")
-    suspend fun createSupplier(@Body request: CreateSupplierRequest): ApiResponse<SupplierDto>
+    suspend fun createSupplier(@Body request: CreateSupplierRequest): ApiResponse<Map<String, String>>
 
     // --- Purchase Orders ---
 
     @GET("api/v1/purchase-orders")
     suspend fun getPurchaseOrders(
-        @Query("supplier_id") supplierId: Int? = null,
+        @Query("supplier_id") supplierId: String? = null,
         @Query("status") status: String? = null
     ): ApiResponse<List<PurchaseOrderDto>>
 
     @GET("api/v1/purchase-orders/{id}")
-    suspend fun getPurchaseOrder(@Path("id") id: Int): ApiResponse<PurchaseOrderDto>
+    suspend fun getPurchaseOrder(@Path("id") id: String): ApiResponse<PurchaseOrderDto>
 
     @POST("api/v1/purchase-orders")
-    suspend fun createPurchaseOrder(@Body request: CreatePoRequest): ApiResponse<PurchaseOrderDto>
+    suspend fun createPurchaseOrder(@Body request: CreatePoRequest): ApiResponse<Map<String, String>>
     
     @POST("api/v1/purchase-orders/{id}/send")
-    suspend fun sendPurchaseOrder(@Path("id") id: Int): ApiResponse<PurchaseOrderDto>
+    suspend fun sendPurchaseOrder(@Path("id") id: String): ApiResponse<Map<String, String>>
 
     @POST("api/v1/purchase-orders/{id}/receive")
     suspend fun receiveGoods(
-        @Path("id") id: Int,
+        @Path("id") id: String,
         @Body request: GoodsReceiptRequest
-    ): ApiResponse<PurchaseOrderDto>
+    ): ApiResponse<Map<String, String>>
 }

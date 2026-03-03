@@ -65,6 +65,7 @@ class AuthRepository @Inject constructor(
     fun isSetupComplete(): Boolean = tokenStore.isSetupComplete()
     fun markSetupComplete() = tokenStore.markSetupComplete()
     fun getRole(): String = tokenStore.getRole()
+    fun isChainOwner(): Boolean = tokenStore.isChainOwner()
     fun logout() = tokenStore.clearTokens()
 
     private suspend fun <T> safeCall(block: suspend () -> NetworkResult<T>): NetworkResult<T> = try {

@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import com.retailiq.datasage.data.api.DemandSensingResponse
 
 interface ForecastApiService {
     @GET("api/v1/forecasting/store")
@@ -16,6 +17,12 @@ interface ForecastApiService {
         @Path("productId") productId: Int,
         @Query("horizon") horizon: Int? = null
     ): ApiResponse<List<ForecastPoint>>
+
+    @GET("api/v1/forecasting/demand-sensing/{productId}")
+    suspend fun demandSensing(
+        @Path("productId") productId: Int,
+        @Query("horizon") horizon: Int? = null
+    ): ApiResponse<DemandSensingResponse>
 }
 
 data class ForecastPoint(

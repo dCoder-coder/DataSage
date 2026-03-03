@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 
 /**
  * Data-layer integration test simulating a barcode scan and confirming that
@@ -53,7 +54,7 @@ class NewSaleBarcodeIntegrationTest {
             if (value == "8901234567890") {
                 return Response.success(BarcodeProductDto(77, "Integration Test Product", 25.0, 150.0))
             }
-            return Response.error(404, okhttp3.ResponseBody.Companion.toResponseBody(null))
+            return Response.error(404, "".toResponseBody(null))
         }
 
         override suspend fun registerBarcode(body: RegisterBarcodeRequest): Response<BarcodeDto> = TODO()

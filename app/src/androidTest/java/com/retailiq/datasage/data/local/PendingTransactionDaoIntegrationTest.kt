@@ -30,8 +30,8 @@ class PendingTransactionDaoIntegrationTest {
 
     @Test
     fun insertQueryAndUpdateStatus_workAsExpected() {
-        val p1 = PendingTransaction(transactionId = "tx-1", payloadJson = "{\"order\":1}", status = "pending")
-        val p2 = PendingTransaction(transactionId = "tx-2", payloadJson = "{\"order\":2}", status = "pending")
+        val p1 = PendingTransaction(id = "tx-1", payloadJson = "{\"order\":1}", status = "pending")
+        val p2 = PendingTransaction(id = "tx-2", payloadJson = "{\"order\":2}", status = "pending")
 
         kotlinx.coroutines.runBlocking {
             dao.insert(p1)

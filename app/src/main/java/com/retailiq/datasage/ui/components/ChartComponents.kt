@@ -23,7 +23,10 @@ import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.HorizontalBarChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.charts.PieChart
+import com.github.mikephil.charting.components.Legend
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
@@ -36,6 +39,7 @@ import com.github.mikephil.charting.data.PieEntry
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.retailiq.datasage.data.api.ForecastPoint
+import com.retailiq.datasage.data.api.EventMarkerDto
 
 // Helper: Custom Font for Charts
 fun getChartTypeface(context: Context): Typeface {
@@ -121,6 +125,8 @@ fun buildForecastDataSets(
     forecast: List<ForecastPoint>,
     navyColor: Int,
     tealColor: Int,
+    adjustedForecast: List<ForecastPoint> = emptyList(),
+    amberColor: Int = android.graphics.Color.parseColor("#FFB300"),
     bandColor: Int = try { Color.parseColor("#801A237E") } catch (_: Exception) { 0x801A237E.toInt() },
     bandFillColor: Int = try { Color.parseColor("#401A237E") } catch (_: Exception) { 0x401A237E.toInt() }
 ): List<ILineDataSet> {
@@ -174,12 +180,32 @@ fun buildForecastDataSets(
         dataSets.add(boundsSet)
     }
 
+    if (adjustedForecast.isNotEmpty()) {
+        val adjEntries = adjustedForecast.mapIndexed { index, pt -> 
+            Entry((offset + index).toFloat(), pt.forecastMean.toFloat())
+        }
+        val adjSet = LineDataSet(adjEntries, "Event-Adjusted").apply {
+            color = amberColor
+            lineWidth = 2.5f
+            setDrawCircles(true)
+            setCircleColor(amberColor)
+            setDrawValues(false)
+        }
+        dataSets.add(adjSet)
+    }
+
     return dataSets
 }
 
 // 2. ForecastLineChart
 @Composable
-fun ForecastLineChart(historical: List<HistoricalPoint>, forecast: List<ForecastPoint>, modifier: Modifier = Modifier) {
+fun ForecastLineChart(
+    historical: List<HistoricalPoint>,
+    forecast: List<ForecastPoint>,
+    modifier: Modifier = Modifier,
+    adjustedForecast: List<ForecastPoint> = emptyList(),
+    events: List<EventMarkerDto> = emptyList()
+) {
     if (historical.isEmpty() && forecast.isEmpty()) {
         EmptyChartPlaceholder(modifier, "No data yet")
         return
@@ -227,7 +253,7 @@ fun ForecastLineChart(historical: List<HistoricalPoint>, forecast: List<Forecast
             }
         },
         update = { chart ->
-            val dataSets = buildForecastDataSets(historical, forecast, navyColor, tealColor)
+            val dataSets = buildForecastDataSets(historical, forecast, navyColor, tealColor, adjustedForecast)
             dataSets.forEach { 
                 if (it is LineDataSet) {
                     it.valueTypeface = typeface
@@ -235,6 +261,23 @@ fun ForecastLineChart(historical: List<HistoricalPoint>, forecast: List<Forecast
                 }
             }
             chart.data = LineData(dataSets)
+            
+            chart.xAxis.removeAllLimitLines()
+            events.forEach { event ->
+                val index = forecast.indexOfFirst { it.date == event.date }
+                if (index != -1) {
+                    val limitLine = LimitLine((historical.size + index).toFloat(), event.name.take(12)).apply {
+                        lineWidth = 1.5f
+                        enableDashedLine(10f, 10f, 0f)
+                        lineColor = android.graphics.Color.parseColor("#FF5722")
+                        this.textColor = textColor
+                        textSize = 9f
+                        this.typeface = typeface
+                    }
+                    chart.xAxis.addLimitLine(limitLine)
+                }
+            }
+            
             chart.invalidate()
         },
         onReset = { it.clear() }

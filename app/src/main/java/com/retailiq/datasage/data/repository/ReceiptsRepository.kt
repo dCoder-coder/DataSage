@@ -1,6 +1,7 @@
 package com.retailiq.datasage.data.repository
 
 import com.retailiq.datasage.data.api.ReceiptsApiService
+import com.retailiq.datasage.data.api.toUserMessage
 import com.retailiq.datasage.data.model.BarcodeDto
 import com.retailiq.datasage.data.model.BarcodeProductDto
 import com.retailiq.datasage.data.model.PrintJobRequest
@@ -19,55 +20,69 @@ class ReceiptsRepository @Inject constructor(
 
     suspend fun getTemplate(): Result<ReceiptTemplateDto> = safeCall {
         val response = api.getTemplate()
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
+        val body = response.body()
+        if (response.isSuccessful && body != null && body.success && body.data != null) {
+            Result.success(body.data)
         } else {
-            Result.failure(Exception("Failed to load template: HTTP ${response.code()}"))
+            val msg = body?.error.toUserMessage()
+            Result.failure(Exception("Failed to load template: $msg"))
         }
     }
 
     suspend fun updateTemplate(req: ReceiptTemplateRequest): Result<ReceiptTemplateDto> = safeCall {
         val response = api.updateTemplate(req)
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
+        val body = response.body()
+        if (response.isSuccessful && body != null && body.success && body.data != null) {
+            Result.success(body.data)
         } else {
-            Result.failure(Exception("Failed to save template: HTTP ${response.code()}"))
+            val msg = body?.error.toUserMessage()
+            Result.failure(Exception("Failed to save template: $msg"))
         }
     }
 
     suspend fun createPrintJob(req: PrintJobRequest): Result<PrintJobResponse> = safeCall {
         val response = api.createPrintJob(req)
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
+        val body = response.body()
+        if (response.isSuccessful && body != null && body.success && body.data != null) {
+            Result.success(body.data)
         } else {
-            Result.failure(Exception("Failed to create print job: HTTP ${response.code()}"))
+            val msg = body?.error.toUserMessage()
+            Result.failure(Exception("Failed to create print job: $msg"))
         }
     }
 
     suspend fun pollPrintJob(jobId: String): Result<PrintJobStatusDto> = safeCall {
         val response = api.pollPrintJob(jobId)
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
+        val body = response.body()
+        if (response.isSuccessful && body != null && body.success && body.data != null) {
+            Result.success(body.data)
         } else {
-            Result.failure(Exception("Failed to poll print job: HTTP ${response.code()}"))
+            val msg = body?.error.toUserMessage()
+            Result.failure(Exception("Failed to poll print job: $msg"))
         }
     }
 
     suspend fun lookupBarcode(value: String): Result<BarcodeProductDto> = safeCall {
         val response = api.lookupBarcode(value)
+        val body = response.body()
         when {
-            response.isSuccessful && response.body() != null -> Result.success(response.body()!!)
+            response.isSuccessful && body != null && body.success && body.data != null -> Result.success(body.data)
             response.code() == 404 -> Result.failure(Exception("Product not found for barcode: $value"))
-            else -> Result.failure(Exception("Barcode lookup failed: HTTP ${response.code()}"))
+            else -> {
+                val msg = body?.error.toUserMessage()
+                Result.failure(Exception("Barcode lookup failed: $msg"))
+            }
         }
     }
 
     suspend fun registerBarcode(req: RegisterBarcodeRequest): Result<BarcodeDto> = safeCall {
         val response = api.registerBarcode(req)
-        if (response.isSuccessful && response.body() != null) {
-            Result.success(response.body()!!)
+        val body = response.body()
+        if (response.isSuccessful && body != null && body.success && body.data != null) {
+            Result.success(body.data)
         } else {
-            Result.failure(Exception("Failed to register barcode: HTTP ${response.code()}"))
+            val msg = body?.error.toUserMessage()
+            Result.failure(Exception("Failed to register barcode: $msg"))
         }
     }
 

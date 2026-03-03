@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
+import com.retailiq.datasage.data.repository.WhatsAppRepository
 
 data class AlertItem(
     val id: String = "",
@@ -29,12 +30,30 @@ sealed class AlertsUiState {
 
 @HiltViewModel
 class AlertsViewModel @Inject constructor(
-    private val alertsApi: AlertsApiService
+    private val alertsApi: AlertsApiService,
+    private val whatsappRepository: WhatsAppRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AlertsUiState>(AlertsUiState.Loading)
     val uiState: StateFlow<AlertsUiState> = _uiState.asStateFlow()
 
-    init { loadAlerts() }
+    private val _whatsappEnabled = MutableStateFlow(false)
+    val whatsappEnabled: StateFlow<Boolean> = _whatsappEnabled.asStateFlow()
+
+    init { 
+        loadAlerts() 
+        checkWhatsappStatus()
+    }
+
+    private fun checkWhatsappStatus() = viewModelScope.launch {
+        val result = whatsappRepository.getConfig()
+        if (result is NetworkResult.Success) {
+            _whatsappEnabled.value = result.data.is_active
+        }
+    }
+
+    fun sendWhatsAppAlert(alertId: Int) = viewModelScope.launch {
+        whatsappRepository.sendAlert(alertId = alertId)
+    }
 
     fun loadAlerts() = viewModelScope.launch {
         _uiState.value = AlertsUiState.Loading

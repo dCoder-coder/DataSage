@@ -117,8 +117,7 @@ fun StaffSessionBanner(
             title = { Text("Session Ended") },
             text = {
                 Text(
-                    "You recorded ${session.transactionsRecorded} transactions " +
-                    "totalling ₹${String.format("%,.2f", session.totalAmount)} in this session."
+                    "Session has ended successfully."
                 )
             },
             confirmButton = {

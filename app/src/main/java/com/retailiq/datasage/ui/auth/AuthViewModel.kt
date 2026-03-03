@@ -120,6 +120,7 @@ class AuthViewModel @Inject constructor(
     suspend fun validateSession(): Boolean = authRepository.validateSession()
     fun isSetupComplete(): Boolean = authRepository.isSetupComplete()
     fun role(): String = authRepository.getRole()
+    fun isChainOwner(): Boolean = authRepository.isChainOwner()
     fun completeSetup() = authRepository.markSetupComplete()
     fun logout() = authRepository.logout()
 

@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.retailiq.datasage.data.api.NetworkResult
+import com.retailiq.datasage.data.repository.WhatsAppRepository
 
 sealed class PoListUiState {
     data object Loading : PoListUiState()
@@ -36,7 +38,8 @@ sealed class PoActionUiState {
 
 @HiltViewModel
 class PurchaseOrderViewModel @Inject constructor(
-    private val repository: SupplierRepository
+    private val repository: SupplierRepository,
+    private val whatsappRepository: WhatsAppRepository
 ) : ViewModel() {
 
     private val _listState = MutableStateFlow<PoListUiState>(PoListUiState.Loading)
@@ -48,7 +51,7 @@ class PurchaseOrderViewModel @Inject constructor(
     private val _actionState = MutableStateFlow<PoActionUiState>(PoActionUiState.Idle)
     val actionState: StateFlow<PoActionUiState> = _actionState.asStateFlow()
 
-    fun loadPurchaseOrders(supplierId: Int? = null) = viewModelScope.launch {
+    fun loadPurchaseOrders(supplierId: String? = null) = viewModelScope.launch {
         _listState.value = PoListUiState.Loading
         repository.getPurchaseOrders(supplierId).fold(
             onSuccess = { _listState.value = PoListUiState.Loaded(it) },
@@ -56,7 +59,7 @@ class PurchaseOrderViewModel @Inject constructor(
         )
     }
 
-    fun loadPurchaseOrder(id: Int) = viewModelScope.launch {
+    fun loadPurchaseOrder(id: String) = viewModelScope.launch {
         _detailState.value = PoDetailUiState.Loading
         repository.getPurchaseOrder(id).fold(
             onSuccess = { _detailState.value = PoDetailUiState.Loaded(it) },
@@ -65,7 +68,7 @@ class PurchaseOrderViewModel @Inject constructor(
     }
 
     fun createPo(
-        supplierId: Int,
+        supplierId: String,
         expectedDelivery: String?,
         notes: String?,
         isDraft: Boolean,
@@ -79,7 +82,7 @@ class PurchaseOrderViewModel @Inject constructor(
 
         val request = CreatePoRequest(
             supplierId = supplierId,
-            expectedDelivery = expectedDelivery,
+            expectedDeliveryDate = expectedDelivery,
             notes = notes,
             status = if (isDraft) "DRAFT" else "SENT",
             items = items
@@ -96,7 +99,7 @@ class PurchaseOrderViewModel @Inject constructor(
         )
     }
 
-    fun sendPo(id: Int) = viewModelScope.launch {
+    fun sendPo(id: String) = viewModelScope.launch {
         _actionState.value = PoActionUiState.InProgress
         
         // Optimistic UI update
@@ -117,7 +120,7 @@ class PurchaseOrderViewModel @Inject constructor(
         repository.sendPurchaseOrder(id).fold(
             onSuccess = {
                 _actionState.value = PoActionUiState.Success("PO Sent successfully")
-                _detailState.value = PoDetailUiState.Loaded(it) // Refresh with actual server response
+                loadPurchaseOrder(id) // Refresh with actual server response
                 loadPurchaseOrders() // Refresh lists
             },
             onFailure = {
@@ -133,7 +136,7 @@ class PurchaseOrderViewModel @Inject constructor(
         )
     }
 
-    fun receiveGoods(id: Int, items: List<GoodsReceiptItemRequest>) = viewModelScope.launch {
+    fun receiveGoods(id: String, items: List<GoodsReceiptItemRequest>) = viewModelScope.launch {
         _actionState.value = PoActionUiState.InProgress
         
         // Validate at least one item
@@ -157,5 +160,30 @@ class PurchaseOrderViewModel @Inject constructor(
 
     fun resetActionState() {
         _actionState.value = PoActionUiState.Idle
+    }
+
+    fun getSupplierPhoneForPo(poId: String, callback: (String?) -> Unit) = viewModelScope.launch {
+        val po = (listState.value as? PoListUiState.Loaded)?.orders?.find { it.id == poId }
+        if (po != null) {
+            repository.getSupplierProfile(po.supplierId).fold(
+                onSuccess = { callback(it.contact?.phone) },
+                onFailure = { callback(null) }
+            )
+        } else {
+            callback(null)
+        }
+    }
+
+    fun sendPoViaWhatsApp(poId: String, supplierPhone: String) = viewModelScope.launch {
+        _actionState.value = PoActionUiState.InProgress
+        when (val result = whatsappRepository.sendPo(poId, supplierPhone)) {
+            is NetworkResult.Success -> {
+                _actionState.value = PoActionUiState.Success("PO sent via WhatsApp")
+            }
+            is NetworkResult.Error -> {
+                _actionState.value = PoActionUiState.Error(result.message)
+            }
+            is NetworkResult.Loading -> Unit
+        }
     }
 }

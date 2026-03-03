@@ -32,6 +32,8 @@ import com.retailiq.datasage.data.model.StaffPerformanceSummaryDto
 import com.retailiq.datasage.ui.components.DateRevenuePair
 import com.retailiq.datasage.ui.components.RevenueLineChart
 import com.retailiq.datasage.ui.navigation.RoleGuard
+import com.retailiq.datasage.ui.components.EmptyStateView
+import com.retailiq.datasage.ui.components.ShimmerLoadingList
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -76,7 +78,7 @@ fun StaffPerformanceScreen(
                     },
                     actions = {
                         TextButton(onClick = { datePickerDialog.show() }) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "Select Date", modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(selectedDate)
                         }
@@ -92,7 +94,7 @@ fun StaffPerformanceScreen(
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                 when (val state = performanceState) {
                     is StaffPerformanceState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        ShimmerLoadingList()
                     }
                     is StaffPerformanceState.Error -> {
                         Text(
@@ -104,10 +106,8 @@ fun StaffPerformanceScreen(
                     }
                     is StaffPerformanceState.Success -> {
                         if (state.performanceList.isEmpty()) {
-                            Text(
-                                text = "No performance data available for $selectedDate",
-                                modifier = Modifier.align(Alignment.Center),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            EmptyStateView(
+                                message = "No performance data available for $selectedDate"
                             )
                         } else {
                             LazyColumn(

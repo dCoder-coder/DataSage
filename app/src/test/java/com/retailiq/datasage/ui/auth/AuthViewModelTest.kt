@@ -190,6 +190,8 @@ class AuthViewModelTest {
         override fun getAccessToken(): String? = access
         override fun getRefreshToken(): String? = refresh
         override fun getRole(): String = _role
+        override fun isChainOwner(): Boolean = false
+        override fun getChainGroupId(): String? = null
         override fun isSetupComplete(): Boolean = setup
         override fun markSetupComplete() { setup = true }
         override fun clearTokens() { access = null; refresh = null }

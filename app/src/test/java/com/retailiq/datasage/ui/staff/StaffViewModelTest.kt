@@ -44,7 +44,7 @@ class StaffViewModelTest {
 
     @Test
     fun `startSession transitions state to Active on success`() = runTest {
-        val session = StaffSessionDto("s1", "ACTIVE", Instant.now().toString(), null, 0, 0.0)
+        val session = StaffSessionDto("s1", "ACTIVE", Instant.now().toString(), null, true, 500.0)
         `when`(repository.startSession()).thenReturn(Result.success(session))
 
         viewModel.startSession()
@@ -69,7 +69,7 @@ class StaffViewModelTest {
 
     @Test
     fun `endSession transitions to Ended on success`() = runTest {
-        val session = StaffSessionDto("s1", "ENDED", Instant.now().toString(), Instant.now().toString(), 5, 500.0)
+        val session = StaffSessionDto("s1", "ENDED", Instant.now().toString(), Instant.now().toString(), false, 500.0)
         `when`(repository.endSession()).thenReturn(Result.success(session))
 
         viewModel.endSession()

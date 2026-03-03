@@ -2,6 +2,7 @@ package com.retailiq.datasage.data.repository
 
 import com.retailiq.datasage.data.api.ForecastApiService
 import com.retailiq.datasage.data.api.ForecastPoint
+import com.retailiq.datasage.data.api.DemandSensingResponse
 import com.retailiq.datasage.data.api.NetworkResult
 import com.retailiq.datasage.data.api.toUserMessage
 import timber.log.Timber
@@ -13,6 +14,15 @@ class ForecastRepository @Inject constructor(
 ) {
     suspend fun getStoreForecast(horizon: Int? = null): NetworkResult<List<ForecastPoint>> = safeCall {
         val response = forecastApi.storeForecast(horizon)
+        if (response.success && response.data != null) {
+            NetworkResult.Success(response.data)
+        } else {
+            NetworkResult.Error(422, response.error.toUserMessage())
+        }
+    }
+
+    suspend fun getDemandSensing(productId: Int, horizon: Int? = null): NetworkResult<DemandSensingResponse> = safeCall {
+        val response = forecastApi.demandSensing(productId, horizon)
         if (response.success && response.data != null) {
             NetworkResult.Success(response.data)
         } else {

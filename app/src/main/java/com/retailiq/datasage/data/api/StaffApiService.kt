@@ -11,18 +11,18 @@ import retrofit2.http.Query
 
 interface StaffApiService {
 
-    @POST("staff/sessions/start")
+    @POST("api/v1/staff/sessions/start")
     suspend fun startSession(): Response<StaffSessionDto>
 
-    @POST("staff/sessions/end")
+    @POST("api/v1/staff/sessions/end")
     suspend fun endSession(): Response<StaffSessionDto>
 
-    @GET("staff/performance")
+    @GET("api/v1/staff/performance")
     suspend fun getDailyPerformance(
         @Query("date") date: String
     ): Response<List<StaffPerformanceSummaryDto>>
 
-    @POST("staff/targets")
+    @POST("api/v1/staff/targets")
     suspend fun setDailyTarget(
         @Body request: DailyTargetRequest
     ): Response<Unit>

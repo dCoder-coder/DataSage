@@ -28,7 +28,7 @@ class StaffRepositoryTest {
 
     @Test
     fun `startSession returns Success when API succeeds`() = runTest {
-        val mockData = StaffSessionDto("s1", "ACTIVE", "2023-10-10T10:00:00Z", null, 0, 0.0)
+        val mockData = StaffSessionDto("s1", "ACTIVE", "2023-10-10T10:00:00Z", null, true, 0.0)
         `when`(api.startSession()).thenReturn(Response.success(mockData))
 
         val result = repository.startSession()

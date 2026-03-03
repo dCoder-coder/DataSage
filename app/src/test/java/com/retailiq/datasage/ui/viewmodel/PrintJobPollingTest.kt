@@ -1,5 +1,6 @@
 package com.retailiq.datasage.ui.viewmodel
 
+import com.retailiq.datasage.data.api.ApiResponse
 import com.retailiq.datasage.data.api.ReceiptsApiService
 import com.retailiq.datasage.data.model.BarcodeDto
 import com.retailiq.datasage.data.model.BarcodeProductDto
@@ -58,18 +59,20 @@ class PrintJobPollingTest {
     private class FakePollReceiptsApi : ReceiptsApiService {
         var pollCount = 0
 
-        override suspend fun createPrintJob(body: PrintJobRequest): Response<PrintJobResponse> {
-            return Response.success(PrintJobResponse("job_999"))
+        override suspend fun createPrintJob(body: PrintJobRequest): Response<ApiResponse<PrintJobResponse>> {
+            val dto = PrintJobResponse("job_999")
+            return Response.success(ApiResponse(success = true, data = dto, error = null, meta = null))
         }
 
-        override suspend fun pollPrintJob(jobId: String): Response<PrintJobStatusDto> {
+        override suspend fun pollPrintJob(jobId: String): Response<ApiResponse<PrintJobStatusDto>> {
             pollCount++
-            return Response.success(PrintJobStatusDto("job_999", "PENDING", Instant.now().toString()))
+            val dto = PrintJobStatusDto("job_999", "PENDING", Instant.now().toString())
+            return Response.success(ApiResponse(success = true, data = dto, error = null, meta = null))
         }
 
-        override suspend fun getTemplate(): Response<ReceiptTemplateDto> = TODO()
-        override suspend fun updateTemplate(body: ReceiptTemplateRequest): Response<ReceiptTemplateDto> = TODO()
-        override suspend fun lookupBarcode(value: String): Response<BarcodeProductDto> = TODO()
-        override suspend fun registerBarcode(body: RegisterBarcodeRequest): Response<BarcodeDto> = TODO()
+        override suspend fun getTemplate(): Response<ApiResponse<ReceiptTemplateDto>> = TODO()
+        override suspend fun updateTemplate(body: ReceiptTemplateRequest): Response<ApiResponse<ReceiptTemplateDto>> = TODO()
+        override suspend fun lookupBarcode(value: String): Response<ApiResponse<BarcodeProductDto>> = TODO()
+        override suspend fun registerBarcode(body: RegisterBarcodeRequest): Response<ApiResponse<BarcodeDto>> = TODO()
     }
 }

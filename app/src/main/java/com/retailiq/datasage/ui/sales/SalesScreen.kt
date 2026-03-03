@@ -21,7 +21,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -30,6 +34,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +71,7 @@ import com.retailiq.datasage.ui.viewmodel.BarcodeLookupUiState
 import com.retailiq.datasage.ui.viewmodel.ReceiptsViewModel
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.repeatOnLifecycle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesScreen(
@@ -74,11 +82,27 @@ fun SalesScreen(
     val cart by viewModel.cart.collectAsState()
     val saleState by viewModel.saleState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val customers by viewModel.customers.collectAsState()
+    val selectedCustomer by viewModel.selectedCustomer.collectAsState()
+    val loyaltyAccount by viewModel.loyaltyAccount.collectAsState()
+    val creditAccount by viewModel.creditAccount.collectAsState()
+    val redemptionPoints by viewModel.redemptionPoints.collectAsState()
+
     var selectedPaymentMode by remember { mutableStateOf("cash") }
+    var customerSearchQuery by remember { mutableStateOf("") }
+    var customerDropdownExpanded by remember { mutableStateOf(false) }
 
     val barcodeLookupState by receiptsViewModel.barcodeLookupState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    // Reload products every time this screen resumes
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            viewModel.loadProducts()
+        }
+    }
 
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         if (result.contents != null) {
@@ -232,18 +256,109 @@ fun SalesScreen(
                     }
                 }
 
+                // Customer Selection
+                Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(8.dp)) {
+                    Column(Modifier.padding(12.dp)) {
+                        if (selectedCustomer != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(selectedCustomer!!.name, fontWeight = FontWeight.Bold)
+                                    selectedCustomer!!.mobileNumber?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                                }
+                                IconButton(onClick = { viewModel.selectCustomer(null) }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear Customer")
+                                }
+                            }
+                            
+                            // Loyalty Redemption Card Let's assume min points = 50 
+                            if (loyaltyAccount != null && loyaltyAccount!!.redeemablePoints >= 50) {
+                                Spacer(Modifier.height(8.dp))
+                                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                                    Column(Modifier.padding(12.dp).fillMaxWidth()) {
+                                        Text("Redeem Points", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        Text("Available to redeem: ${loyaltyAccount!!.redeemablePoints} points (= ₹${String.format("%.2f", loyaltyAccount!!.valueInCurrency)})", style = MaterialTheme.typography.bodySmall)
+                                        Slider(
+                                            value = redemptionPoints.toFloat(),
+                                            onValueChange = { viewModel.setRedemptionPoints(it.toInt()) },
+                                            valueRange = 0f..loyaltyAccount!!.redeemablePoints.toFloat(),
+                                            steps = if (loyaltyAccount!!.redeemablePoints > 50) (loyaltyAccount!!.redeemablePoints / 10) else 0
+                                        )
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Selected: $redemptionPoints")
+                                            Text("Discount: -₹${String.format("%.2f", viewModel.loyaltyDiscount)}", fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Search Box
+                            Box {
+                                OutlinedTextField(
+                                    value = customerSearchQuery,
+                                    onValueChange = { 
+                                        customerSearchQuery = it
+                                        viewModel.searchCustomers(it)
+                                        customerDropdownExpanded = true
+                                    },
+                                    placeholder = { Text("Assign to Customer (Mobile/Name)") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                                )
+                                DropdownMenu(
+                                    expanded = customerDropdownExpanded && customers.isNotEmpty(),
+                                    onDismissRequest = { customerDropdownExpanded = false },
+                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                ) {
+                                    customers.forEach { customer ->
+                                        DropdownMenuItem(
+                                            text = { Text("${customer.name} - ${customer.mobileNumber ?: ""}") },
+                                            onClick = {
+                                                viewModel.selectCustomer(customer)
+                                                customerDropdownExpanded = false
+                                                customerSearchQuery = ""
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Payment mode
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("cash", "card", "upi").forEach { mode ->
+                    listOf("cash", "card", "upi", "credit").forEach { mode ->
                         FilterChip(
                             selected = selectedPaymentMode == mode,
                             onClick = { selectedPaymentMode = mode },
                             label = { Text(mode.replaceFirstChar { it.uppercase() }) }
                         )
                     }
+                }
+                
+                // Credit Warning
+                if (selectedPaymentMode == "credit" && selectedCustomer != null) {
+                    val availableCredit = creditAccount?.availableCredit ?: 0.0
+                    val isExceeding = viewModel.cartTotal > availableCredit
+                    Text(
+                        text = if (isExceeding) "Warning: Sale exceeds available credit limit (₹${String.format("%.2f", availableCredit)})!" else "Available Credit: ₹${String.format("%.2f", availableCredit)}",
+                        color = if (isExceeding) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()
+                    )
+                } else if (selectedPaymentMode == "credit" && selectedCustomer == null) {
+                    Text(
+                        text = "Warning: Credit sales require a customer to be selected.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
                 }
 
                 // Total and submit
@@ -265,6 +380,13 @@ fun SalesScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
+                            if (viewModel.gstTotal > 0.0) {
+                                Text(
+                                    "Incl. GST: ₹${String.format("%.2f", viewModel.gstTotal)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                         Button(
                             onClick = { viewModel.submitSale(selectedPaymentMode) },

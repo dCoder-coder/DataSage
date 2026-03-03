@@ -1,5 +1,6 @@
 package com.retailiq.datasage.ui.viewmodel
 
+import com.retailiq.datasage.data.api.ApiResponse
 import com.retailiq.datasage.data.api.ReceiptsApiService
 import com.retailiq.datasage.data.model.BarcodeDto
 import com.retailiq.datasage.data.model.BarcodeProductDto
@@ -94,16 +95,17 @@ class ReceiptsViewModelTest {
     }
 
     private class FakeReceiptsApi(val notFound: Boolean) : ReceiptsApiService {
-        override suspend fun getTemplate(): Response<ReceiptTemplateDto> = TODO()
-        override suspend fun updateTemplate(body: ReceiptTemplateRequest): Response<ReceiptTemplateDto> = TODO()
-        override suspend fun createPrintJob(body: PrintJobRequest): Response<PrintJobResponse> = TODO()
-        override suspend fun pollPrintJob(jobId: String): Response<PrintJobStatusDto> = TODO()
+        override suspend fun getTemplate(): Response<ApiResponse<ReceiptTemplateDto>> = TODO()
+        override suspend fun updateTemplate(body: ReceiptTemplateRequest): Response<ApiResponse<ReceiptTemplateDto>> = TODO()
+        override suspend fun createPrintJob(body: PrintJobRequest): Response<ApiResponse<PrintJobResponse>> = TODO()
+        override suspend fun pollPrintJob(jobId: String): Response<ApiResponse<PrintJobStatusDto>> = TODO()
 
-        override suspend fun lookupBarcode(value: String): Response<BarcodeProductDto> {
+        override suspend fun lookupBarcode(value: String): Response<ApiResponse<BarcodeProductDto>> {
             if (notFound) return Response.error(404, "".toResponseBody(null))
-            return Response.success(BarcodeProductDto(1, "Test Product", 10.0, 100.0))
+            val dto = BarcodeProductDto(1, "Test Product", 10.0, 100.0)
+            return Response.success(ApiResponse(success = true, data = dto, error = null, meta = null))
         }
 
-        override suspend fun registerBarcode(body: RegisterBarcodeRequest): Response<BarcodeDto> = TODO()
+        override suspend fun registerBarcode(body: RegisterBarcodeRequest): Response<ApiResponse<BarcodeDto>> = TODO()
     }
 }

@@ -45,12 +45,17 @@ import com.retailiq.datasage.data.model.SnapshotDto
 import com.google.gson.Gson
 import com.retailiq.datasage.ui.components.DateRevenuePair
 import com.retailiq.datasage.ui.components.RevenueLineChart
+import com.retailiq.datasage.data.model.LoyaltyAnalyticsDto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
+fun AnalyticsScreen(
+    onNavigateToGstReports: () -> Unit = {},
+    viewModel: AnalyticsViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsState()
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsState()
+    val loyaltyAnalytics by viewModel.loyaltyAnalytics.collectAsState()
 
     Scaffold(
         topBar = {
@@ -71,7 +76,13 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
                 }
             }
             is AnalyticsUiState.Loaded -> {
-                AnalyticsContent(state.data, categoryBreakdown, Modifier.padding(padding))
+                AnalyticsContent(
+                    data = state.data, 
+                    categoryBreakdown = categoryBreakdown, 
+                    loyaltyAnalytics = loyaltyAnalytics, 
+                    onNavigateToGstReports = onNavigateToGstReports,
+                    modifier = Modifier.padding(padding)
+                )
             }
             is AnalyticsUiState.Offline -> {
                 Column(Modifier.padding(padding)) {
@@ -108,6 +119,8 @@ fun AnalyticsScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
 private fun AnalyticsContent(
     data: DashboardPayload,
     categoryBreakdown: List<CategoryBreakdown>,
+    loyaltyAnalytics: LoyaltyAnalyticsDto?,
+    onNavigateToGstReports: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val kpis = data.todayKpis
@@ -133,6 +146,15 @@ private fun AnalyticsContent(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("Transactions", kpis.transactions.toString(), Modifier.weight(1f))
                 StatCard("Avg Basket", "₹${String.format("%.0f", kpis.avgBasket)}", Modifier.weight(1f))
+            }
+        }
+
+        item {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onNavigateToGstReports,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("View GST Reports & GSTR-1")
             }
         }
 
@@ -215,6 +237,41 @@ private fun AnalyticsContent(
                                 Text("₹${String.format("%,.0f", product.revenue)}", style = MaterialTheme.typography.bodySmall)
                                 Text("Sold: ${product.unitsSold.toInt()}", style = MaterialTheme.typography.bodySmall)
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (loyaltyAnalytics != null) {
+            item {
+                Text("Loyalty & Rewards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text("Enrolled Customers", style = MaterialTheme.typography.labelMedium)
+                                Text("${loyaltyAnalytics.enrolledCustomers}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Redemption Rate", style = MaterialTheme.typography.labelMedium)
+                                Text("${String.format("%.1f", loyaltyAnalytics.redemptionRatePercent)}%", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Points Issued This Month:", style = MaterialTheme.typography.bodySmall)
+                            Text("${loyaltyAnalytics.pointsIssuedThisMonth}", fontWeight = FontWeight.SemiBold)
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Active Liability Value:", style = MaterialTheme.typography.bodySmall)
+                            Text("₹${String.format("%,.0f", loyaltyAnalytics.activeLiability)}", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

@@ -24,7 +24,7 @@ import com.retailiq.datasage.ui.viewmodel.PurchaseOrderViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoodsReceiptScreen(
-    poId: Int,
+    poId: String,
     viewModel: PurchaseOrderViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
@@ -86,7 +86,7 @@ fun GoodsReceiptScreen(
                     // Default behavior: Receive exactly what was ordered for simplicity in this demo,
                     // In a real app we would map local state changes here
                     val receivedItems = po.items.map { 
-                        GoodsReceiptItemRequest(it.id, it.orderedQty, it.unitPrice) 
+                        GoodsReceiptItemRequest(it.productId, it.orderedQty.toInt(), it.unitPrice) 
                     }
                     viewModel.receiveGoods(po.id, receivedItems)
                 }) {
@@ -104,7 +104,7 @@ fun GoodsReceiptScreen(
 
 // Data structures for holding editable quantities
 class ReceiptLineItem(
-    val poItemId: Int,
+    val productId: Int,
     val productName: String,
     val ordered: Int,
     var receivedQty: String,
@@ -117,10 +117,10 @@ fun ReceiptContent(po: PurchaseOrderDto, actionState: PoActionUiState, onConfirm
     val editableItems = remember(po.items) {
         po.items.map {
             ReceiptLineItem(
-                poItemId = it.id,
+                productId = it.productId,
                 productName = it.productName ?: "Unknown Product",
-                ordered = it.orderedQty,
-                receivedQty = it.orderedQty.toString(), // Default pre-fill
+                ordered = it.orderedQty.toInt(),
+                receivedQty = it.orderedQty.toInt().toString(), // Default pre-fill
                 unitPrice = it.unitPrice.toString()
             )
         }.toMutableStateList()

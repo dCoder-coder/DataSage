@@ -3,17 +3,17 @@ package com.retailiq.datasage.data.model
 import com.google.gson.annotations.SerializedName
 
 data class ReceiptTemplateDto(
-    @SerializedName("header") val header: String,
-    @SerializedName("footer") val footer: String,
-    @SerializedName("show_gstin") val showGstin: Boolean,
-    @SerializedName("paper_width") val paperWidth: String
+    @SerializedName("header_text") val header: String? = "",
+    @SerializedName("footer_text") val footer: String? = "",
+    @SerializedName("show_gstin") val showGstin: Boolean = false,
+    @SerializedName("paper_width_mm") val paperWidth: Int = 80
 )
 
 data class ReceiptTemplateRequest(
-    @SerializedName("header") val header: String,
-    @SerializedName("footer") val footer: String,
+    @SerializedName("header_text") val header: String,
+    @SerializedName("footer_text") val footer: String,
     @SerializedName("show_gstin") val showGstin: Boolean,
-    @SerializedName("paper_width") val paperWidth: String
+    @SerializedName("paper_width_mm") val paperWidth: Int
 )
 
 data class PrintJobRequest(

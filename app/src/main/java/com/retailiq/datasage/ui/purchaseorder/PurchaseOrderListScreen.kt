@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import com.retailiq.datasage.data.model.supplier.PurchaseOrderDto
 import com.retailiq.datasage.ui.viewmodel.PoListUiState
 import com.retailiq.datasage.ui.viewmodel.PurchaseOrderViewModel
@@ -25,21 +26,38 @@ import com.retailiq.datasage.ui.viewmodel.PurchaseOrderViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PurchaseOrderListScreen(
-    supplierId: Int? = null,
+    supplierId: String? = null,
     viewModel: PurchaseOrderViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onCreatePo: (Int?) -> Unit,
-    onNavigateToReceive: (Int) -> Unit
+    onCreatePo: (String?) -> Unit,
+    onNavigateToReceive: (String) -> Unit
 ) {
     val listState by viewModel.listState.collectAsState()
     var selectedStatus by remember { mutableStateOf<String?>(null) }
     val statuses = listOf("ALL", "DRAFT", "SENT", "PARTIAL", "FULFILLED", "CANCELLED")
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val actionState by viewModel.actionState.collectAsState()
+
+    var showPhoneDialogForPo by remember { mutableStateOf<String?>(null) }
+    var fetchedPhone by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(actionState) {
+        if (actionState is com.retailiq.datasage.ui.viewmodel.PoActionUiState.Success) {
+            snackbarHostState.showSnackbar((actionState as com.retailiq.datasage.ui.viewmodel.PoActionUiState.Success).message)
+            viewModel.resetActionState()
+        } else if (actionState is com.retailiq.datasage.ui.viewmodel.PoActionUiState.Error) {
+            snackbarHostState.showSnackbar("Error: ${(actionState as com.retailiq.datasage.ui.viewmodel.PoActionUiState.Error).message}")
+            viewModel.resetActionState()
+        }
+    }
 
     LaunchedEffect(supplierId, selectedStatus) {
         viewModel.loadPurchaseOrders(supplierId) // Backend doesn't support status filter out of box, so we filter locally
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(if (supplierId != null) "Supplier Orders" else "Purchase Orders") },
@@ -88,7 +106,16 @@ fun PurchaseOrderListScreen(
                     } else {
                         LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             items(filteredList) { po ->
-                                PurchaseOrderCard(po, onClick = { if (po.status == "SENT" || po.status == "PARTIAL") onNavigateToReceive(po.id) })
+                                PurchaseOrderCard(
+                                    po = po,
+                                    onClick = { if (po.status == "SENT" || po.status == "PARTIAL") onNavigateToReceive(po.id) },
+                                    onSendWhatsapp = {
+                                        viewModel.getSupplierPhoneForPo(po.id) { phone ->
+                                            fetchedPhone = phone ?: ""
+                                            showPhoneDialogForPo = po.id
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
@@ -96,10 +123,35 @@ fun PurchaseOrderListScreen(
             }
         }
     }
+    
+    if (showPhoneDialogForPo != null) {
+        AlertDialog(
+            onDismissRequest = { showPhoneDialogForPo = null },
+            title = { Text("Send via WhatsApp") },
+            text = { Text("Send PO summary to ${fetchedPhone.takeIf { !it.isNullOrBlank() } ?: "the supplier"}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val poId = showPhoneDialogForPo!!
+                        viewModel.sendPoViaWhatsApp(poId, fetchedPhone ?: "")
+                        showPhoneDialogForPo = null
+                    },
+                    enabled = fetchedPhone != null
+                ) {
+                    Text("Send")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPhoneDialogForPo = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun PurchaseOrderCard(po: PurchaseOrderDto, onClick: () -> Unit) {
+fun PurchaseOrderCard(po: PurchaseOrderDto, onClick: () -> Unit, onSendWhatsapp: () -> Unit = {}) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp)
@@ -114,11 +166,20 @@ fun PurchaseOrderCard(po: PurchaseOrderDto, onClick: () -> Unit) {
                 Text("Supplier: ${po.supplierName}", style = MaterialTheme.typography.bodyMedium)
             }
             Text("Created: ${po.createdAt?.take(10) ?: "N/A"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (po.expectedDelivery != null) {
-                Text("Expected: ${po.expectedDelivery}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (po.expectedDeliveryDate != null) {
+                Text("Expected: ${po.expectedDeliveryDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                if (po.status == "SENT") {
+                    AssistChip(
+                        onClick = onSendWhatsapp,
+                        label = { Text("Send PO to Supplier") },
+                        colors = AssistChipDefaults.assistChipColors(labelColor = Color(0xFF25D366))
+                    )
+                } else {
+                    Spacer(Modifier.width(1.dp))
+                }
                 Text(String.format("$%.2f", po.totalAmount), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
         }

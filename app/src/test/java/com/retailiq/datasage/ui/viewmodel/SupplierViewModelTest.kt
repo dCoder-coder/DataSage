@@ -43,7 +43,7 @@ class SupplierViewModelTest {
 
     @Test
     fun loadSuppliers_emitsLoadedState() = runTest {
-        val list = listOf(SupplierDto(1, "S1", null, null, null, 30, null, null, null))
+        val list = listOf(SupplierDto("1", "S1", null, null, null, 30, null, null, null))
         whenever(repo.getSuppliers()).thenReturn(Result.success(list))
 
         val vm = SupplierViewModel(repo)
@@ -68,9 +68,9 @@ class SupplierViewModelTest {
 
     @Test
     fun createSupplier_emitsSuccess_andReloadsList() = runTest {
-        val s1 = SupplierDto(1, "S1", null, null, null, 30, null, null, null)
+        val s1 = SupplierDto("1", "S1", null, null, null, 30, null, null, null)
         whenever(repo.getSuppliers()).thenReturn(Result.success(emptyList())) // Initial load
-        whenever(repo.createSupplier(any())).thenReturn(Result.success(s1))
+        whenever(repo.createSupplier(any())).thenReturn(Result.success("1"))
 
         val vm = SupplierViewModel(repo)
         advanceUntilIdle() // Process initial load
@@ -87,6 +87,22 @@ class SupplierViewModelTest {
 
         val createState = vm.createState.value
         assertTrue(createState is SupplierCreateUiState.Success)
-        assertEquals("S1", (createState as SupplierCreateUiState.Success).supplier.name)
+        // createSupplier now returns String ID, not the full SupplierDto
+        assertEquals("1", (createState as SupplierCreateUiState.Success).supplierId)
+    }
+
+    @Test
+    fun createSupplier_withBlankName_emitsError() = runTest {
+        whenever(repo.getSuppliers()).thenReturn(Result.success(emptyList()))
+
+        val vm = SupplierViewModel(repo)
+        advanceUntilIdle()
+
+        vm.createSupplier("", null, null, null, 30)
+        advanceUntilIdle()
+
+        val createState = vm.createState.value
+        assertTrue(createState is SupplierCreateUiState.Error)
+        assertEquals("Supplier name is required", (createState as SupplierCreateUiState.Error).message)
     }
 }

@@ -69,7 +69,8 @@ data class Product(
     @SerializedName("lead_time_days") val leadTimeDays: Int = 3,
     @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("is_slow_moving") val isSlowMoving: Boolean = false,
-    @SerializedName("created_at") val createdAt: String? = null
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("tax_rate") val taxRate: Double? = null
 )
 
 data class ProductDetail(
@@ -88,7 +89,8 @@ data class ProductDetail(
     @SerializedName("lead_time_days") val leadTimeDays: Int = 3,
     @SerializedName("is_active") val isActive: Boolean = true,
     @SerializedName("is_slow_moving") val isSlowMoving: Boolean = false,
-    @SerializedName("created_at") val createdAt: String? = null
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("tax_rate") val taxRate: Double? = null
 )
 
 // ── Request Models ──

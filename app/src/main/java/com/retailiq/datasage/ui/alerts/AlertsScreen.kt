@@ -32,11 +32,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,8 +54,12 @@ fun AlertsScreen(
     onNavigateToCreatePo: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val whatsappEnabled by viewModel.whatsappEnabled.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Alerts") },
@@ -81,14 +90,18 @@ fun AlertsScreen(
                         items(state.alerts) { alert ->
                             AlertCard(
                                 alert = alert,
+                                isWhatsappEnabled = whatsappEnabled,
                                 onCreatePo = { 
-                                    // Parse potential product ID from metadata or message string if backend sends it. 
-                                    // Normally metadata would have a struct like `{"po_action": true, "product_id": 12}`
-                                    // As a fallback, assuming if it's there we can link, but for now just pass null to open empty PO.
                                     val prodId = alert.metadata?.get("product_id") as? Int ?: alert.metadata?.get("product_id")?.toString()?.toDoubleOrNull()?.toInt()
-                                    // The requirement: "Tapping 'Create PO' navigates with prefillProductId set if available"
                                     if (prodId != null) onNavigateToCreatePo(prodId)
-                                    else onNavigateToCreatePo(-1) // Default or empty behavior depending on route constraints
+                                    else onNavigateToCreatePo(-1)
+                                },
+                                onNotifyWhatsapp = {
+                                    val alertId = it.toIntOrNull() ?: 1
+                                    viewModel.sendWhatsAppAlert(alertId)
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("Message queued")
+                                    }
                                 }
                             )
                         }
@@ -112,7 +125,12 @@ fun AlertsScreen(
 }
 
 @Composable
-private fun AlertCard(alert: AlertItem, onCreatePo: () -> Unit = {}) {
+private fun AlertCard(
+    alert: AlertItem,
+    isWhatsappEnabled: Boolean = false,
+    onCreatePo: () -> Unit = {},
+    onNotifyWhatsapp: (String) -> Unit = {}
+) {
     val severityColor = when (alert.severity.lowercase()) {
         "critical" -> Color(0xFFD32F2F)
         "high" -> Color(0xFFFF9800)
@@ -151,14 +169,25 @@ private fun AlertCard(alert: AlertItem, onCreatePo: () -> Unit = {}) {
             
             // Render action chip if po_action flag is true
             val isPoAction = alert.metadata?.get("po_action") == true || alert.metadata?.get("po_action") == "true"
-            if (isPoAction) {
+            if (isPoAction || isWhatsappEnabled) {
                 Spacer(Modifier.height(8.dp))
-                AssistChip(
-                    onClick = onCreatePo,
-                    label = { Text("Create PO") },
-                    leadingIcon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) },
-                    colors = AssistChipDefaults.assistChipColors(labelColor = MaterialTheme.colorScheme.primary, leadingIconContentColor = MaterialTheme.colorScheme.primary)
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (isPoAction) {
+                        AssistChip(
+                            onClick = onCreatePo,
+                            label = { Text("Create PO") },
+                            leadingIcon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) },
+                            colors = AssistChipDefaults.assistChipColors(labelColor = MaterialTheme.colorScheme.primary, leadingIconContentColor = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                    if (isWhatsappEnabled) {
+                        AssistChip(
+                            onClick = { onNotifyWhatsapp(alert.id) },
+                            label = { Text("Notify via WhatsApp") },
+                            colors = AssistChipDefaults.assistChipColors(labelColor = Color(0xFF25D366), leadingIconContentColor = Color(0xFF25D366))
+                        )
+                    }
+                }
             }
         }
     }

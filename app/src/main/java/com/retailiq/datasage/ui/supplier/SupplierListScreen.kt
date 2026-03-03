@@ -22,6 +22,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.retailiq.datasage.data.model.supplier.SupplierDto
+import com.retailiq.datasage.ui.components.EmptyStateView
+import com.retailiq.datasage.ui.components.ShimmerLoadingList
 import com.retailiq.datasage.ui.viewmodel.SupplierCreateUiState
 import com.retailiq.datasage.ui.viewmodel.SupplierListUiState
 import com.retailiq.datasage.ui.viewmodel.SupplierViewModel
@@ -30,7 +32,7 @@ import com.retailiq.datasage.ui.viewmodel.SupplierViewModel
 @Composable
 fun SupplierListScreen(
     viewModel: SupplierViewModel = hiltViewModel(),
-    onNavigateToSupplier: (Int) -> Unit
+    onNavigateToSupplier: (String) -> Unit
 ) {
     val listState by viewModel.listState.collectAsState()
     var isSheetOpen by remember { mutableStateOf(false) }
@@ -46,7 +48,7 @@ fun SupplierListScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             when (val state = listState) {
                 is SupplierListUiState.Loading -> {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    ShimmerLoadingList()
                 }
                 is SupplierListUiState.Error -> {
                     Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -58,9 +60,10 @@ fun SupplierListScreen(
                 }
                 is SupplierListUiState.Loaded -> {
                     if (state.suppliers.isEmpty()) {
-                        Text("No suppliers found.\nTap + to add one.", 
-                             modifier = Modifier.align(Alignment.Center),
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        EmptyStateView(
+                            icon = Icons.Default.Business,
+                            message = "No suppliers found.\nTap + to add one."
+                        )
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(16.dp),
@@ -101,7 +104,9 @@ fun SupplierCard(supplier: SupplierDto, onClick: () -> Unit) {
                         Text(supplier.contactName, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-                FillRateChip(supplier.fillRate)
+                // fill_rate_90d is a percentage (0-100), convert to 0-1 fraction for FillRateChip
+                val fillFraction = supplier.fillRate90d?.let { it / 100.0 }
+                FillRateChip(fillFraction)
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

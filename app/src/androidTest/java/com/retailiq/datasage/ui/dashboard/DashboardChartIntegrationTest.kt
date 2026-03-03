@@ -7,8 +7,8 @@ import com.retailiq.datasage.data.api.DailySummary
 import com.retailiq.datasage.data.api.DashboardPayload
 import com.retailiq.datasage.data.api.Revenue7dPoint
 import com.retailiq.datasage.data.api.TodayKpis
-import io.mockk.every
-import io.mockk.mockk
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
@@ -21,7 +21,7 @@ class DashboardChartIntegrationTest {
     @Test
     fun dashboardScreen_rendersCharts_whenDataIsLoaded() {
         // Mock ViewModel
-        val mockViewModel = mockk<DashboardViewModel>(relaxed = true)
+        val mockViewModel = mock<DashboardViewModel>()
 
         // Stub state with mock chart data
         val mockData = DashboardPayload(
@@ -34,9 +34,9 @@ class DashboardChartIntegrationTest {
         val stateFlow = MutableStateFlow<DashboardUiState>(DashboardUiState.Loaded(mockData))
         
         // Return dummy StateFlows
-        every { mockViewModel.uiState } returns stateFlow
-        every { mockViewModel.pendingCount } returns MutableStateFlow(0)
-        every { mockViewModel.failedCount } returns MutableStateFlow(0)
+        whenever(mockViewModel.uiState).thenReturn(stateFlow)
+        whenever(mockViewModel.pendingCount).thenReturn(MutableStateFlow(0))
+        whenever(mockViewModel.failedCount).thenReturn(MutableStateFlow(0))
 
         composeTestRule.setContent {
             DashboardScreen(viewModel = mockViewModel)

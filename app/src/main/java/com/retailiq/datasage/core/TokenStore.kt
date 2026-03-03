@@ -5,6 +5,8 @@ interface TokenStore {
     fun getAccessToken(): String?
     fun getRefreshToken(): String?
     fun getRole(): String
+    fun isChainOwner(): Boolean
+    fun getChainGroupId(): String?
     fun isSetupComplete(): Boolean
     fun markSetupComplete()
     fun clearTokens()

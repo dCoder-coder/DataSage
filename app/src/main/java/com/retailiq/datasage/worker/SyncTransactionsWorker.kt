@@ -26,6 +26,8 @@ class SyncTransactionsWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         Timber.d("SyncTransactionsWorker started")
+        // Rescue any previously-failed transactions so they retry with sanitized payloads
+        dao.resetAllFailedToPending()
         val pending = dao.getByStatus("pending")
         if (pending.isEmpty()) {
             Timber.d("No pending transactions to sync")
@@ -40,7 +42,14 @@ class SyncTransactionsWorker @AssistedInject constructor(
         for (chunk in chunks) {
             val payloads = chunk.mapNotNull { tx ->
                 try {
-                    gson.fromJson<Map<String, Any>>(tx.payloadJson, mapType)
+                    val map = gson.fromJson<Map<String, Any>>(tx.payloadJson, mapType).toMutableMap()
+                    // Data Fix: Strip fields that break the backend marshmallow validation
+                    map.remove("loyalty_points_redeemed")
+                    map.remove("loyalty_discount_amount")
+                    // Fix lowercase payment_mode (backend requires CASH, UPI, etc.)
+                    val mode = map["payment_mode"]
+                    if (mode is String) map["payment_mode"] = mode.uppercase()
+                    map
                 } catch (e: Exception) {
                     Timber.e(e, "Invalid JSON payload for transaction %s", tx.id)
                     dao.markFailed(tx.id)
@@ -63,10 +72,11 @@ class SyncTransactionsWorker @AssistedInject constructor(
                         Timber.d("Batch of %d transactions synced", chunk.size)
                     }
                     else -> {
-                        Timber.w("Batch sync failed with code %d", code)
-                        handleChunkFailure(chunk)
-                        allSucceeded = false
-                    }
+                    val errorBody = response.errorBody()?.string()
+                    Timber.w("Batch sync failed with code %d. Response: %s", code, errorBody)
+                    handleChunkFailure(chunk)
+                    allSucceeded = false
+                }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Network error during batch sync")

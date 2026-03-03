@@ -79,9 +79,8 @@ data class CreateTransactionResponse(
 )
 
 data class BatchTransactionResponse(
-    val total: Int = 0,
-    val succeeded: Int = 0,
-    val failed: Int = 0,
+    val accepted: Int = 0,
+    val rejected: Int = 0,
     val errors: List<BatchError> = emptyList()
 )
 

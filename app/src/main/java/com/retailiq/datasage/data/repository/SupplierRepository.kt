@@ -24,7 +24,7 @@ class SupplierRepository @Inject constructor(
         }
     }
 
-    suspend fun getSupplierProfile(id: Int): Result<SupplierProfileDto> = safeCall {
+    suspend fun getSupplierProfile(id: String): Result<SupplierProfileDto> = safeCall {
         val response = api.getSupplierProfile(id)
         if (response.success && response.data != null) {
             Result.success(response.data)
@@ -33,16 +33,18 @@ class SupplierRepository @Inject constructor(
         }
     }
 
-    suspend fun createSupplier(request: CreateSupplierRequest): Result<SupplierDto> = safeCall {
+    /** Returns the new supplier's UUID ID string on success. */
+    suspend fun createSupplier(request: CreateSupplierRequest): Result<String> = safeCall {
         val response = api.createSupplier(request)
         if (response.success && response.data != null) {
-            Result.success(response.data)
+            val id = response.data["id"] ?: throw Exception("Missing id in response")
+            Result.success(id)
         } else {
             Result.failure(Exception(response.error.toUserMessage()))
         }
     }
 
-    suspend fun getPurchaseOrders(supplierId: Int? = null, status: String? = null): Result<List<PurchaseOrderDto>> = safeCall {
+    suspend fun getPurchaseOrders(supplierId: String? = null, status: String? = null): Result<List<PurchaseOrderDto>> = safeCall {
         val response = api.getPurchaseOrders(supplierId, status)
         if (response.success && response.data != null) {
             Result.success(response.data)
@@ -51,7 +53,7 @@ class SupplierRepository @Inject constructor(
         }
     }
 
-    suspend fun getPurchaseOrder(id: Int): Result<PurchaseOrderDto> = safeCall {
+    suspend fun getPurchaseOrder(id: String): Result<PurchaseOrderDto> = safeCall {
         val response = api.getPurchaseOrder(id)
         if (response.success && response.data != null) {
             Result.success(response.data)
@@ -60,28 +62,32 @@ class SupplierRepository @Inject constructor(
         }
     }
 
-    suspend fun createPurchaseOrder(request: CreatePoRequest): Result<PurchaseOrderDto> = safeCall {
+    /** Returns the new PO's UUID ID string on success. */
+    suspend fun createPurchaseOrder(request: CreatePoRequest): Result<String> = safeCall {
         val response = api.createPurchaseOrder(request)
         if (response.success && response.data != null) {
-            Result.success(response.data)
+            val id = response.data["id"] ?: throw Exception("Missing id in response")
+            Result.success(id)
         } else {
             Result.failure(Exception(response.error.toUserMessage()))
         }
     }
 
-    suspend fun sendPurchaseOrder(id: Int): Result<PurchaseOrderDto> = safeCall {
+    /** Returns the PO's UUID ID string on success. */
+    suspend fun sendPurchaseOrder(id: String): Result<String> = safeCall {
         val response = api.sendPurchaseOrder(id)
         if (response.success && response.data != null) {
-            Result.success(response.data)
+            Result.success(response.data["id"] ?: id)
         } else {
             Result.failure(Exception(response.error.toUserMessage()))
         }
     }
 
-    suspend fun receiveGoods(id: Int, request: GoodsReceiptRequest): Result<PurchaseOrderDto> = safeCall {
+    /** Returns the PO's UUID ID string on success. */
+    suspend fun receiveGoods(id: String, request: GoodsReceiptRequest): Result<String> = safeCall {
         val response = api.receiveGoods(id, request)
         if (response.success && response.data != null) {
-            Result.success(response.data)
+            Result.success(response.data["id"] ?: id)
         } else {
             Result.failure(Exception(response.error.toUserMessage()))
         }
@@ -96,4 +102,3 @@ class SupplierRepository @Inject constructor(
         Result.failure(Exception(ex.message ?: "Unexpected error"))
     }
 }
-

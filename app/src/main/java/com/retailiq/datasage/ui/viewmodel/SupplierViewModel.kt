@@ -28,7 +28,7 @@ sealed class SupplierProfileUiState {
 sealed class SupplierCreateUiState {
     data object Idle : SupplierCreateUiState()
     data object Creating : SupplierCreateUiState()
-    data class Success(val supplier: SupplierDto) : SupplierCreateUiState()
+    data class Success(val supplierId: String) : SupplierCreateUiState()
     data class Error(val message: String) : SupplierCreateUiState()
 }
 
@@ -58,7 +58,7 @@ class SupplierViewModel @Inject constructor(
         )
     }
 
-    fun loadSupplierProfile(id: Int) = viewModelScope.launch {
+    fun loadSupplierProfile(id: String) = viewModelScope.launch {
         _profileState.value = SupplierProfileUiState.Loading
         repository.getSupplierProfile(id).fold(
             onSuccess = { _profileState.value = SupplierProfileUiState.Loaded(it) },
@@ -80,8 +80,8 @@ class SupplierViewModel @Inject constructor(
         _createState.value = SupplierCreateUiState.Creating
         val request = CreateSupplierRequest(name, contactName, phone, email, paymentTermsDays)
         repository.createSupplier(request).fold(
-            onSuccess = {
-                _createState.value = SupplierCreateUiState.Success(it)
+            onSuccess = { id ->
+                _createState.value = SupplierCreateUiState.Success(id)
                 loadSuppliers() // Refresh list
             },
             onFailure = {
@@ -94,4 +94,3 @@ class SupplierViewModel @Inject constructor(
         _createState.value = SupplierCreateUiState.Idle
     }
 }
-

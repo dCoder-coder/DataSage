@@ -10,10 +10,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PriceChange
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -59,6 +65,12 @@ fun SettingsScreen(
     syncViewModel: SyncStatusViewModel = hiltViewModel(),
     receiptsViewModel: ReceiptsViewModel = hiltViewModel(),
     onNavigateToStaffPerformance: () -> Unit = {},
+    onNavigateToLoyaltySettings: () -> Unit = {},
+    onNavigateToGstSettings: () -> Unit = {},
+    onNavigateToWhatsAppSettings: () -> Unit = {},
+    onNavigateToPricing: () -> Unit = {},
+    onNavigateToEvents: () -> Unit = {},
+    onNavigateToAlerts: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val pending by syncViewModel.pending.collectAsState()
@@ -71,7 +83,7 @@ fun SettingsScreen(
     var headerText by remember { mutableStateOf("") }
     var footerText by remember { mutableStateOf("") }
     var showGstin by remember { mutableStateOf(false) }
-    var paperWidth by remember { mutableStateOf("58mm") }
+    var paperWidth by remember { mutableStateOf(80) }
 
     LaunchedEffect(Unit) {
         receiptsViewModel.loadTemplate()
@@ -80,8 +92,8 @@ fun SettingsScreen(
     LaunchedEffect(templateState) {
         if (templateState is TemplateUiState.Success) {
             val tmpl = (templateState as TemplateUiState.Success).template
-            headerText = tmpl.header
-            footerText = tmpl.footer
+            headerText = tmpl.header.orEmpty()
+            footerText = tmpl.footer.orEmpty()
             showGstin = tmpl.showGstin
             paperWidth = tmpl.paperWidth
         }
@@ -91,7 +103,8 @@ fun SettingsScreen(
         topBar = { TopAppBar(title = { Text("Settings") }) }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Sync status card
@@ -102,7 +115,7 @@ fun SettingsScreen(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Sync, contentDescription = "Sync Status", modifier = Modifier.size(20.dp))
                         Text("Sync Status", fontWeight = FontWeight.SemiBold)
                     }
                     Text("Pending: $pending")
@@ -123,7 +136,7 @@ fun SettingsScreen(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Info, contentDescription = "App Info", modifier = Modifier.size(20.dp))
                         Text("App Info", fontWeight = FontWeight.SemiBold)
                     }
                     Text("DataSage v1.0.0", style = MaterialTheme.typography.bodySmall)
@@ -139,7 +152,7 @@ fun SettingsScreen(
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Print, contentDescription = "Printer Settings", modifier = Modifier.size(20.dp))
                         Text("Receipt & Printer", fontWeight = FontWeight.SemiBold)
                     }
 
@@ -168,8 +181,8 @@ fun SettingsScreen(
 
                         Text("Paper Width")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilterChip(selected = paperWidth == "58mm", onClick = { paperWidth = "58mm" }, label = { Text("58mm") })
-                            FilterChip(selected = paperWidth == "80mm", onClick = { paperWidth = "80mm" }, label = { Text("80mm") })
+                            FilterChip(selected = paperWidth == 58, onClick = { paperWidth = 58 }, label = { Text("58mm") })
+                            FilterChip(selected = paperWidth == 80, onClick = { paperWidth = 80 }, label = { Text("80mm") })
                         }
 
                         Button(
@@ -203,6 +216,23 @@ fun SettingsScreen(
 
             if (userRole.equals("OWNER", ignoreCase = true)) {
                 Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToLoyaltySettings() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = "Loyalty Programme", modifier = Modifier.size(20.dp))
+                            Text("Loyalty Programme", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+                
+                Card(
                     modifier = Modifier.fillMaxWidth().clickable { onNavigateToStaffPerformance() },
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -213,11 +243,101 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Info, contentDescription = "Staff Management", modifier = Modifier.size(20.dp))
                             Text("Staff Management", fontWeight = FontWeight.SemiBold)
                         }
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Navigate", modifier = Modifier.size(20.dp))
                     }
+                }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToGstSettings() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = "GST Configuration", modifier = Modifier.size(20.dp))
+                            Text("GST Configuration", fontWeight = FontWeight.SemiBold)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Navigate", modifier = Modifier.size(20.dp))
+                    }
+                }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToWhatsAppSettings() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Info, contentDescription = "WhatsApp Setup", modifier = Modifier.size(20.dp))
+                            Text("WhatsApp Setup", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToPricing() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.PriceChange, contentDescription = "Pricing Suggestions", modifier = Modifier.size(20.dp))
+                            Text("Pricing Suggestions", fontWeight = FontWeight.SemiBold)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Navigate", modifier = Modifier.size(20.dp))
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToEvents() },
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Events Calendar", modifier = Modifier.size(20.dp))
+                            Text("Events Calendar", fontWeight = FontWeight.SemiBold)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Navigate", modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+
+            // Alerts
+            Card(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToAlerts() },
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.Notifications, contentDescription = "Alerts", modifier = Modifier.size(20.dp))
+                        Text("Alerts", fontWeight = FontWeight.SemiBold)
+                    }
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Navigate", modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -227,7 +347,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout")
                 Text("  Logout")
             }
         }

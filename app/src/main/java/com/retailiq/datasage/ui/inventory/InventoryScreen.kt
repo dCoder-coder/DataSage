@@ -1,5 +1,6 @@
 package com.retailiq.datasage.ui.inventory
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,29 +33,103 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.outlined.DocumentScanner
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.retailiq.datasage.ui.inventory.ocr.OcrState
+import com.retailiq.datasage.ui.inventory.ocr.OcrViewModel
+import androidx.lifecycle.repeatOnLifecycle
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
+fun InventoryScreen(
+    onNavigateToAddProduct: () -> Unit = {},
+    onNavigateToProduct: (Int) -> Unit = {},
+    onNavigateToOcrReview: (String) -> Unit = {},
+    onNavigateToAudit: () -> Unit = {},
+    viewModel: InventoryViewModel = hiltViewModel(),
+    ocrViewModel: OcrViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val ocrState by ocrViewModel.state.collectAsState()
+
+    // Reload products every time this screen resumes
+    // (e.g., when navigating back from inventory/add)
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            viewModel.loadProducts()
+        }
+    }
+
+    val context = LocalContext.current
+    var capturedPhotoFile by remember { mutableStateOf<File?>(null) }
+    var photoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showPreviewDialog by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success) {
+            showPreviewDialog = true
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            val file = File(context.cacheDir, "ocr_invoice_${System.currentTimeMillis()}.jpg")
+            capturedPhotoFile = file
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            photoUri = uri
+            cameraLauncher.launch(uri)
+        }
+    }
+
+    LaunchedEffect(ocrState) {
+        if (ocrState is OcrState.Polling) {
+            val jobId = (ocrState as OcrState.Polling).jobId
+            onNavigateToOcrReview(jobId)
+            ocrViewModel.reset()
+            showPreviewDialog = false
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Inventory") },
                 actions = {
+                    IconButton(onClick = onNavigateToAudit) {
+                        Icon(Icons.Default.FactCheck, contentDescription = "Stock Audit")
+                    }
+                    IconButton(onClick = { permissionLauncher.launch(android.Manifest.permission.CAMERA) }) {
+                        Icon(Icons.Outlined.DocumentScanner, contentDescription = "Scan Invoice")
+                    }
                     IconButton(onClick = { viewModel.loadProducts() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            androidx.compose.material3.FloatingActionButton(onClick = onNavigateToAddProduct) {
+                Icon(Icons.Default.Add, contentDescription = "Add Product")
+            }
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -83,7 +160,7 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                         ) {
                             items(state.products, key = { it.productId }) { product ->
                                 Card(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToProduct(product.productId) },
                                     shape = RoundedCornerShape(12.dp),
                                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                 ) {
@@ -134,5 +211,45 @@ fun InventoryScreen(viewModel: InventoryViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+
+    if (showPreviewDialog && capturedPhotoFile != null) {
+        AlertDialog(
+            onDismissRequest = { if (ocrState !is OcrState.Uploading) showPreviewDialog = false },
+            title = { Text("Invoice Captured") },
+            text = {
+                Column(Modifier.fillMaxWidth()) {
+                    Text("Photo saved temporarily. Do you want to process this invoice?")
+                    Spacer(Modifier.height(16.dp))
+                    if (ocrState is OcrState.Uploading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(8.dp))
+                        Text("Uploading...", style = MaterialTheme.typography.bodySmall)
+                    } else if (ocrState is OcrState.Error) {
+                        Text((ocrState as OcrState.Error).message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { ocrViewModel.uploadInvoice(capturedPhotoFile!!) },
+                    enabled = ocrState !is OcrState.Uploading
+                ) {
+                    Text("Use This Photo")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showPreviewDialog = false
+                        capturedPhotoFile?.delete()
+                        ocrViewModel.reset()
+                    },
+                    enabled = ocrState !is OcrState.Uploading
+                ) {
+                    Text("Retake")
+                }
+            }
+        )
     }
 }

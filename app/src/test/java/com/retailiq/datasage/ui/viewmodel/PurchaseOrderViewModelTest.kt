@@ -17,6 +17,7 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -24,11 +25,13 @@ class PurchaseOrderViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repo: SupplierRepository
+    private lateinit var whatsappRepo: com.retailiq.datasage.data.repository.WhatsAppRepository
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
         repo = mock(SupplierRepository::class.java)
+        whatsappRepo = mock(com.retailiq.datasage.data.repository.WhatsAppRepository::class.java)
     }
 
     @After
@@ -38,14 +41,14 @@ class PurchaseOrderViewModelTest {
 
     @Test
     fun sendPo_optimisticallyUpdatesActionState_andReloadsDetails() = runTest {
-        val dto = PurchaseOrderDto(1, 1, "Sup", "SENT", null, 100.0, null, null, null)
-        whenever(repo.sendPurchaseOrder(1)).thenReturn(Result.success(dto))
-        whenever(repo.getPurchaseOrder(1)).thenReturn(Result.success(dto))
-        whenever(repo.getPurchaseOrders(any(), any())).thenReturn(Result.success(listOf(dto)))
+        val dto = PurchaseOrderDto("1", "1", "Sup", "SENT", null, 100.0, null, null, null)
+        whenever(repo.sendPurchaseOrder("1")).thenReturn(Result.success("PO sent"))
+        whenever(repo.getPurchaseOrder("1")).thenReturn(Result.success(dto))
+        whenever(repo.getPurchaseOrders(anyOrNull(), anyOrNull())).thenReturn(Result.success(listOf(dto)))
 
-        val vm = PurchaseOrderViewModel(repo)
+        val vm = PurchaseOrderViewModel(repo, whatsappRepo)
 
-        vm.sendPo(1)
+        vm.sendPo("1")
         advanceUntilIdle()
 
         val actionState = vm.actionState.value
@@ -59,9 +62,9 @@ class PurchaseOrderViewModelTest {
 
     @Test
     fun createPo_handlesEmptyItemsValidation() = runTest {
-        val vm = PurchaseOrderViewModel(repo)
+        val vm = PurchaseOrderViewModel(repo, whatsappRepo)
 
-        vm.createPo(1, null, null, isDraft = true, items = emptyList())
+        vm.createPo("1", null, null, isDraft = true, items = emptyList())
         advanceUntilIdle()
 
         val actionState = vm.actionState.value
@@ -71,13 +74,13 @@ class PurchaseOrderViewModelTest {
 
     @Test
     fun createPo_savesDraftSuccessfully() = runTest {
-        val dto = PurchaseOrderDto(2, 1, "Sup", "DRAFT", null, 50.0, null, null, null)
-        whenever(repo.createPurchaseOrder(any())).thenReturn(Result.success(dto))
-        whenever(repo.getPurchaseOrders(any(), any())).thenReturn(Result.success(listOf(dto)))
+        val dto = PurchaseOrderDto("2", "1", "Sup", "DRAFT", null, 50.0, null, null, null)
+        whenever(repo.createPurchaseOrder(any())).thenReturn(Result.success("2"))
+        whenever(repo.getPurchaseOrders(anyOrNull(), anyOrNull())).thenReturn(Result.success(listOf(dto)))
 
-        val vm = PurchaseOrderViewModel(repo)
+        val vm = PurchaseOrderViewModel(repo, whatsappRepo)
 
-        vm.createPo(1, null, null, isDraft = true, items = listOf(CreatePoItemRequest(1, 10, 5.0)))
+        vm.createPo("1", null, null, isDraft = true, items = listOf(CreatePoItemRequest(1, 10, 5.0)))
         advanceUntilIdle()
 
         val actionState = vm.actionState.value

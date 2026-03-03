@@ -17,4 +17,5 @@ class AuthEventBus @Inject constructor() {
 
 sealed class AuthEvent {
     data object SessionExpired : AuthEvent()
+    data object Logout : AuthEvent()
 }

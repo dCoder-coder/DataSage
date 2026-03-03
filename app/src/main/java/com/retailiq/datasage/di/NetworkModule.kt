@@ -20,6 +20,11 @@ import com.retailiq.datasage.data.api.ReceiptsApiService
 import com.retailiq.datasage.data.api.StaffApiService
 import com.retailiq.datasage.data.api.StoreApiService
 import com.retailiq.datasage.data.api.TransactionApiService
+import com.retailiq.datasage.data.api.PricingApiService
+import com.retailiq.datasage.data.api.EventApiService
+import com.retailiq.datasage.data.api.VisionApiService
+import com.retailiq.datasage.core.GlobalErrorHandler
+import com.retailiq.datasage.core.RetryInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,6 +37,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -44,7 +50,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttp(tokenStore: TokenStore, authEventBus: AuthEventBus): OkHttpClient {
+    fun provideOkHttp(tokenStore: TokenStore, authEventBus: AuthEventBus, globalErrorHandler: GlobalErrorHandler): OkHttpClient {
         val authInterceptor = Interceptor { chain ->
             val token = tokenStore.getAccessToken()
             val request = chain.request().newBuilder().apply {
@@ -92,8 +98,13 @@ object NetworkModule {
         }
 
         return OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
+            .addInterceptor(RetryInterceptor())
             .addInterceptor(refreshInterceptor)
+            .addInterceptor(globalErrorHandler)
             .addInterceptor(HttpLoggingInterceptor { message ->
                 Timber.tag("HTTP").d(message)
             }.apply {
@@ -125,4 +136,12 @@ object NetworkModule {
     @Provides @Singleton fun supplierApi(retrofit: Retrofit): com.retailiq.datasage.data.api.SupplierApiService = retrofit.create(com.retailiq.datasage.data.api.SupplierApiService::class.java)
     @Provides @Singleton fun staffApi(retrofit: Retrofit): StaffApiService = retrofit.create(StaffApiService::class.java)
     @Provides @Singleton fun offlineApi(retrofit: Retrofit): OfflineApiService = retrofit.create(OfflineApiService::class.java)
+    @Provides @Singleton fun loyaltyApi(retrofit: Retrofit): com.retailiq.datasage.data.api.LoyaltyApiService = retrofit.create(com.retailiq.datasage.data.api.LoyaltyApiService::class.java)
+    @Provides @Singleton fun creditApi(retrofit: Retrofit): com.retailiq.datasage.data.api.CreditApiService = retrofit.create(com.retailiq.datasage.data.api.CreditApiService::class.java)
+    @Provides @Singleton fun gstApi(retrofit: Retrofit): com.retailiq.datasage.data.api.GstApiService = retrofit.create(com.retailiq.datasage.data.api.GstApiService::class.java)
+    @Provides @Singleton fun whatsappApi(retrofit: Retrofit): com.retailiq.datasage.data.api.WhatsAppApiService = retrofit.create(com.retailiq.datasage.data.api.WhatsAppApiService::class.java)
+    @Provides @Singleton fun chainApi(retrofit: Retrofit): com.retailiq.datasage.data.api.ChainApiService = retrofit.create(com.retailiq.datasage.data.api.ChainApiService::class.java)
+    @Provides @Singleton fun pricingApi(retrofit: Retrofit): PricingApiService = retrofit.create(PricingApiService::class.java)
+    @Provides @Singleton fun eventApi(retrofit: Retrofit): EventApiService = retrofit.create(EventApiService::class.java)
+    @Provides @Singleton fun visionApi(retrofit: Retrofit): VisionApiService = retrofit.create(VisionApiService::class.java)
 }

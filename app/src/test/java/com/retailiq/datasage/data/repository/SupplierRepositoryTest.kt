@@ -7,6 +7,8 @@ import com.retailiq.datasage.data.model.supplier.CreatePoRequest
 import com.retailiq.datasage.data.model.supplier.CreateSupplierRequest
 import com.retailiq.datasage.data.model.supplier.GoodsReceiptRequest
 import com.retailiq.datasage.data.model.supplier.PurchaseOrderDto
+import com.retailiq.datasage.data.model.supplier.SupplierAnalyticsDto
+import com.retailiq.datasage.data.model.supplier.SupplierContactDto
 import com.retailiq.datasage.data.model.supplier.SupplierDto
 import com.retailiq.datasage.data.model.supplier.SupplierProfileDto
 import kotlinx.coroutines.runBlocking
@@ -35,33 +37,41 @@ class SupplierRepositoryTest {
     }
 
     @Test
-    fun createSupplier_returnsSuccess() = runBlocking {
+    fun createSupplier_returnsSuccessId() = runBlocking {
         val repo = SupplierRepository(FakeSupplierApi())
         val req = CreateSupplierRequest("New Corp", null, null, null, 15)
         val result = repo.createSupplier(req)
         assertTrue(result.isSuccess)
-        assertEquals("New Corp", result.getOrNull()?.name)
+        assertEquals("2", result.getOrNull())
     }
 
     @Test
-    fun receiveGoods_returnsSuccess() = runBlocking {
+    fun receiveGoods_returnsSuccessId() = runBlocking {
         val repo = SupplierRepository(FakeSupplierApi())
-        val result = repo.receiveGoods(1, GoodsReceiptRequest(emptyList()))
+        val result = repo.receiveGoods("1", GoodsReceiptRequest(emptyList()))
         assertTrue(result.isSuccess)
-        assertEquals("FULFILLED", result.getOrNull()?.status)
+        assertEquals("1", result.getOrNull())
+    }
+
+    @Test
+    fun sendPurchaseOrder_returnsSuccessId() = runBlocking {
+        val repo = SupplierRepository(FakeSupplierApi())
+        val result = repo.sendPurchaseOrder("1")
+        assertTrue(result.isSuccess)
+        assertEquals("1", result.getOrNull())
     }
 
     @Test
     fun exception_mapsToFailure() = runBlocking {
         val repo = SupplierRepository(object : SupplierApiService {
             override suspend fun getSuppliers() = throw RuntimeException("Crash")
-            override suspend fun getSupplierProfile(id: Int) = throw RuntimeException()
+            override suspend fun getSupplierProfile(id: String) = throw RuntimeException()
             override suspend fun createSupplier(request: CreateSupplierRequest) = throw RuntimeException()
-            override suspend fun getPurchaseOrders(supplierId: Int?, status: String?) = throw RuntimeException()
-            override suspend fun getPurchaseOrder(id: Int) = throw RuntimeException()
+            override suspend fun getPurchaseOrders(supplierId: String?, status: String?) = throw RuntimeException()
+            override suspend fun getPurchaseOrder(id: String) = throw RuntimeException()
             override suspend fun createPurchaseOrder(request: CreatePoRequest) = throw RuntimeException()
-            override suspend fun sendPurchaseOrder(id: Int) = throw RuntimeException()
-            override suspend fun receiveGoods(id: Int, request: GoodsReceiptRequest) = throw RuntimeException()
+            override suspend fun sendPurchaseOrder(id: String) = throw RuntimeException()
+            override suspend fun receiveGoods(id: String, request: GoodsReceiptRequest) = throw RuntimeException()
         })
         
         val result = repo.getSuppliers()
@@ -73,13 +83,13 @@ class SupplierRepositoryTest {
     fun timeout_mapsTo408ErrorText() = runBlocking {
         val repo = SupplierRepository(object : SupplierApiService {
             override suspend fun getSuppliers() = throw SocketTimeoutException()
-            override suspend fun getSupplierProfile(id: Int) = throw SocketTimeoutException()
+            override suspend fun getSupplierProfile(id: String) = throw SocketTimeoutException()
             override suspend fun createSupplier(request: CreateSupplierRequest) = throw SocketTimeoutException()
-            override suspend fun getPurchaseOrders(supplierId: Int?, status: String?) = throw SocketTimeoutException()
-            override suspend fun getPurchaseOrder(id: Int) = throw SocketTimeoutException()
+            override suspend fun getPurchaseOrders(supplierId: String?, status: String?) = throw SocketTimeoutException()
+            override suspend fun getPurchaseOrder(id: String) = throw SocketTimeoutException()
             override suspend fun createPurchaseOrder(request: CreatePoRequest) = throw SocketTimeoutException()
-            override suspend fun sendPurchaseOrder(id: Int) = throw SocketTimeoutException()
-            override suspend fun receiveGoods(id: Int, request: GoodsReceiptRequest) = throw SocketTimeoutException()
+            override suspend fun sendPurchaseOrder(id: String) = throw SocketTimeoutException()
+            override suspend fun receiveGoods(id: String, request: GoodsReceiptRequest) = throw SocketTimeoutException()
         })
         
         val result = repo.getSuppliers()
@@ -88,50 +98,60 @@ class SupplierRepositoryTest {
     }
 
     private class FakeSupplierApi(private val success: Boolean = true) : SupplierApiService {
-        override suspend fun getSuppliers() = if (success) {
-            ApiResponse(true, listOf(SupplierDto(1, "Test Supplier", null, null, null, 30, 2.5, 0.95, null)), null, null)
+        override suspend fun getSuppliers(): ApiResponse<List<SupplierDto>> = if (success) {
+            ApiResponse(true, listOf(SupplierDto("1", "Test Supplier", null, null, null, 30, null, null, null)), null, null)
         } else {
             ApiResponse(false, null, ApiError("BAD_REQUEST", "Invalid request"), null)
         }
 
-        override suspend fun getSupplierProfile(id: Int) = if (success) {
-            ApiResponse(true, SupplierProfileDto(id, "Test Supplier", null, null, null, 30, 2.5, 0.95, 0.05), null, null)
+        override suspend fun getSupplierProfile(id: String): ApiResponse<SupplierProfileDto> = if (success) {
+            ApiResponse(
+                true,
+                SupplierProfileDto(
+                    id = id,
+                    name = "Test Supplier",
+                    contact = SupplierContactDto(name = "John", phone = "1234567890", email = "test@test.com"),
+                    paymentTermsDays = 30,
+                    analytics = SupplierAnalyticsDto(avgLeadTimeDays = 2.5, fillRate90d = 95.0)
+                ),
+                null, null
+            )
         } else {
             ApiResponse(false, null, ApiError("NOT_FOUND", "Not found"), null)
         }
 
-        override suspend fun createSupplier(request: CreateSupplierRequest) = if (success) {
-            ApiResponse(true, SupplierDto(2, request.name, request.contactName, request.phone, request.email, request.paymentTermsDays, null, null, null), null, null)
+        override suspend fun createSupplier(request: CreateSupplierRequest): ApiResponse<Map<String, String>> = if (success) {
+            ApiResponse(true, mapOf("id" to "2"), null, null)
         } else {
             ApiResponse(false, null, ApiError("VALIDATION_ERROR", "Invalid input"), null)
         }
 
-        override suspend fun getPurchaseOrders(supplierId: Int?, status: String?) = if (success) {
-            ApiResponse(true, listOf(PurchaseOrderDto(1, 1, "Supplier", "DRAFT", null, 100.0, null, null, null)), null, null)
+        override suspend fun getPurchaseOrders(supplierId: String?, status: String?): ApiResponse<List<PurchaseOrderDto>> = if (success) {
+            ApiResponse(true, listOf(PurchaseOrderDto("1", "1", "Supplier", "DRAFT")), null, null)
         } else {
             ApiResponse(false, null, ApiError("BAD_REQUEST", "Invalid"), null)
         }
 
-        override suspend fun getPurchaseOrder(id: Int) = if (success) {
-            ApiResponse(true, PurchaseOrderDto(id, 1, "Supplier", "DRAFT", null, 100.0, null, null, null), null, null)
+        override suspend fun getPurchaseOrder(id: String): ApiResponse<PurchaseOrderDto> = if (success) {
+            ApiResponse(true, PurchaseOrderDto(id, "1", "Supplier", "DRAFT"), null, null)
         } else {
             ApiResponse(false, null, ApiError("NOT_FOUND", "Not found"), null)
         }
 
-        override suspend fun createPurchaseOrder(request: CreatePoRequest) = if (success) {
-            ApiResponse(true, PurchaseOrderDto(2, request.supplierId, "Sup", "DRAFT", null, 50.0, request.notes, null, null), null, null)
+        override suspend fun createPurchaseOrder(request: CreatePoRequest): ApiResponse<Map<String, String>> = if (success) {
+            ApiResponse(true, mapOf("id" to "2"), null, null)
         } else {
             ApiResponse(false, null, ApiError("ERROR", "Error"), null)
         }
 
-        override suspend fun sendPurchaseOrder(id: Int) = if (success) {
-            ApiResponse(true, PurchaseOrderDto(id, 1, "Sup", "SENT", null, 100.0, null, null, null), null, null)
+        override suspend fun sendPurchaseOrder(id: String): ApiResponse<Map<String, String>> = if (success) {
+            ApiResponse(true, mapOf("id" to id), null, null)
         } else {
             ApiResponse(false, null, ApiError("ERROR", "Error"), null)
         }
 
-        override suspend fun receiveGoods(id: Int, request: GoodsReceiptRequest) = if (success) {
-            ApiResponse(true, PurchaseOrderDto(id, 1, "Sup", "FULFILLED", null, 100.0, null, null, null), null, null)
+        override suspend fun receiveGoods(id: String, request: GoodsReceiptRequest): ApiResponse<Map<String, String>> = if (success) {
+            ApiResponse(true, mapOf("id" to id), null, null)
         } else {
             ApiResponse(false, null, ApiError("ERROR", "Error"), null)
         }

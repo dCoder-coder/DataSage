@@ -62,7 +62,7 @@ fun SyncStatusBar(pending: Int, failed: Int, onRetry: (() -> Unit)? = null) {
             val icon = if (failed > 0) Icons.Default.CloudOff else Icons.Default.Sync
             Icon(
                 icon,
-                contentDescription = null,
+                contentDescription = "Sync Warning",
                 tint = Color.White,
                 modifier = Modifier.size(16.dp).then(
                     if (pending > 0 && failed == 0) Modifier.rotate(rotation) else Modifier

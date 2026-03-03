@@ -23,6 +23,9 @@ interface PendingTransactionDao {
     @Query("UPDATE pending_transactions SET status = 'failed' WHERE id = :id")
     suspend fun markFailed(id: String)
 
+    @Query("UPDATE pending_transactions SET status = 'pending', retryCount = 0 WHERE status = 'failed'")
+    suspend fun resetAllFailedToPending()
+
     @Query("SELECT COUNT(*) FROM pending_transactions WHERE status = :status")
     suspend fun countByStatus(status: String): Int
 

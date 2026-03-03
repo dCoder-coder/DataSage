@@ -41,12 +41,16 @@ import com.retailiq.datasage.ui.components.ForecastLineChart
 fun ForecastScreen(viewModel: ForecastViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsState()
 
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.loadDemandSensing(1) // Load demand sensing with dummy product ID 1
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Demand Forecast") },
                 actions = {
-                    IconButton(onClick = { viewModel.loadForecast() }) {
+                    IconButton(onClick = { viewModel.loadDemandSensing(1) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 }
@@ -93,7 +97,9 @@ fun ForecastScreen(viewModel: ForecastViewModel = hiltViewModel()) {
                         ForecastLineChart(
                             historical = state.historical,
                             forecast = state.forecast,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
+                            adjustedForecast = state.adjustedForecast,
+                            events = state.events
                         )
                     }
                 }
@@ -106,7 +112,7 @@ fun ForecastScreen(viewModel: ForecastViewModel = hiltViewModel()) {
                 ) {
                     Text(state.message)
                     Spacer(Modifier.height(16.dp))
-                    Button(onClick = { viewModel.loadForecast() }) { Text("Retry") }
+                    Button(onClick = { viewModel.loadDemandSensing(1) }) { Text("Retry") }
                 }
             }
         }

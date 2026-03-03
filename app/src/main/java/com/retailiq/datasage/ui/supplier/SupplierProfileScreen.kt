@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.retailiq.datasage.data.model.supplier.PurchaseOrderDto
+import com.retailiq.datasage.data.model.supplier.PurchaseOrderSummaryDto
 import com.retailiq.datasage.data.model.supplier.SupplierProductDto
 import com.retailiq.datasage.data.model.supplier.SupplierProfileDto
 import com.retailiq.datasage.ui.viewmodel.SupplierProfileUiState
@@ -28,11 +28,11 @@ import com.retailiq.datasage.ui.viewmodel.SupplierViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupplierProfileScreen(
-    supplierId: Int,
+    supplierId: String,
     viewModel: SupplierViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onCreatePo: (Int) -> Unit,
-    onViewAllPos: (Int) -> Unit
+    onCreatePo: (String) -> Unit,
+    onViewAllPos: (String) -> Unit
 ) {
     val profileState by viewModel.profileState.collectAsState()
 
@@ -55,7 +55,7 @@ fun SupplierProfileScreen(
                         modifier = Modifier.padding(end = 8.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                        Icon(Icons.Default.AddShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.AddShoppingCart, contentDescription = "Create Purchase Order", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Create PO")
                     }
@@ -83,12 +83,12 @@ fun SupplierProfileScreen(
 }
 
 @Composable
-private fun ProfileContent(profile: SupplierProfileDto, onViewAllPos: (Int) -> Unit) {
+private fun ProfileContent(profile: SupplierProfileDto, onViewAllPos: (String) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ContactCard(profile) }
         item { AnalyticsCard(profile) }
         item { TimelineHeader(profile.id, onViewAllPos) }
-        item { PoTimeline(profile.recentPos) }
+        item { PoTimeline(profile.recentPurchaseOrders) }
         item { Text("Sourced Products", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
         if (profile.sourcedProducts.isEmpty()) {
             item { Text("No products sourced yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -102,22 +102,23 @@ private fun ProfileContent(profile: SupplierProfileDto, onViewAllPos: (Int) -> U
 
 @Composable
 private fun ContactCard(profile: SupplierProfileDto) {
+    val contact = profile.contact
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
         Column(Modifier.padding(16.dp)) {
             Text(profile.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
-            if (!profile.contactName.isNullOrBlank()) Text("Contact: ${profile.contactName}", style = MaterialTheme.typography.bodyMedium)
+            if (!contact?.name.isNullOrBlank()) Text("Contact: ${contact?.name}", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Phone, contentDescription = null, Modifier.size(16.dp))
+                Icon(Icons.Default.Phone, contentDescription = "Phone", Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(profile.phone ?: "No phone", style = MaterialTheme.typography.bodyMedium)
+                Text(contact?.phone ?: "No phone", style = MaterialTheme.typography.bodyMedium)
             }
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Email, contentDescription = null, Modifier.size(16.dp))
+                Icon(Icons.Default.Email, contentDescription = "Email", Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(profile.email ?: "No email", style = MaterialTheme.typography.bodyMedium)
+                Text(contact?.email ?: "No email", style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
@@ -125,26 +126,29 @@ private fun ContactCard(profile: SupplierProfileDto) {
 
 @Composable
 private fun AnalyticsCard(profile: SupplierProfileDto) {
+    val analytics = profile.analytics
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Lead Time", style = MaterialTheme.typography.labelMedium)
-                Text(profile.avgLeadTimeDays?.let { "%.1f d".format(it) } ?: "-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(analytics?.avgLeadTimeDays?.let { "%.1f d".format(it) } ?: "-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Fill Rate (90d)", style = MaterialTheme.typography.labelMedium)
-                FillRateChip(profile.fillRate)
+                // fill_rate_90d is already a percentage (e.g. 85.0)
+                val fillRateFraction = (analytics?.fillRate90d ?: 0.0) / 100.0
+                FillRateChip(fillRateFraction)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Price (6m)", style = MaterialTheme.typography.labelMedium)
-                Text(profile.priceChange6m?.let { "%.1f%%".format(it * 100) } ?: "-", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Terms", style = MaterialTheme.typography.labelMedium)
+                Text("${profile.paymentTermsDays}d", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun TimelineHeader(supplierId: Int, onViewAllPos: (Int) -> Unit) {
+private fun TimelineHeader(supplierId: String, onViewAllPos: (String) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("90-Day PO History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         TextButton(onClick = { onViewAllPos(supplierId) }) { Text("View All") }
@@ -152,7 +156,7 @@ private fun TimelineHeader(supplierId: Int, onViewAllPos: (Int) -> Unit) {
 }
 
 @Composable
-private fun PoTimeline(pos: List<PurchaseOrderDto>) {
+private fun PoTimeline(pos: List<PurchaseOrderSummaryDto>) {
     if (pos.isEmpty()) {
         Text("No recent orders.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
@@ -161,7 +165,7 @@ private fun PoTimeline(pos: List<PurchaseOrderDto>) {
         pos.forEach { po ->
             AssistChip(
                 onClick = { /* Could open PO detail */ },
-                label = { Text("PO#${po.id} • $${po.totalAmount}") },
+                label = { Text("PO#${po.id.take(8)} • ${po.status}") },
                 leadingIcon = { Icon(Icons.Default.Receipt, null, Modifier.size(16.dp)) },
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -177,8 +181,7 @@ private fun SupplierProductCard(product: SupplierProductDto) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp)) {
         Row(Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(product.productName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                if (product.supplierSku != null) Text("SKU: ${product.supplierSku}", style = MaterialTheme.typography.bodySmall)
+                Text(product.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(String.format("$%.2f", product.quotedPrice), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
