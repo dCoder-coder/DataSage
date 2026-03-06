@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -38,7 +39,10 @@ import com.retailiq.datasage.ui.components.ForecastLineChart
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ForecastScreen(viewModel: ForecastViewModel = hiltViewModel()) {
+fun ForecastScreen(
+    onNavigateBack: () -> Unit = {},
+    viewModel: ForecastViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -49,6 +53,14 @@ fun ForecastScreen(viewModel: ForecastViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("Demand Forecast") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { viewModel.loadDemandSensing(1) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

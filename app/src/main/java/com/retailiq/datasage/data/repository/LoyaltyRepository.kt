@@ -62,6 +62,15 @@ class LoyaltyRepository @Inject constructor(
             val response = api.getSettings()
             if (response.success && response.data != null) {
                 NetworkResult.Success(response.data)
+            } else if (response.error?.code == "NOT_FOUND") {
+                // No loyalty program configured yet — return defaults so user can set one up
+                NetworkResult.Success(LoyaltyProgramSettingsDto(
+                    pointsPerRupee = 1.0,
+                    redemptionRate = 0.1,
+                    minRedemptionPoints = 100,
+                    expiryDays = 365,
+                    isActive = false
+                ))
             } else {
                 NetworkResult.Error(0, response.error?.message ?: "Failed to get program settings")
             }

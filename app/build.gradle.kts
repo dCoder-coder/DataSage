@@ -16,7 +16,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.retailiq.datasage.HiltTestRunner"
 
         val apiBaseUrl = (project.findProperty("API_BASE_URL") as String?)
             ?: "http://10.0.2.2:5000/"
@@ -101,6 +101,8 @@ dependencies {
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
     testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.3.1")
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.core)
@@ -108,6 +110,14 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation("org.mockito:mockito-core:5.11.0")
+    androidTestImplementation("org.mockito.kotlin:mockito-kotlin:5.3.1")
+    androidTestImplementation("org.mockito:mockito-android:5.11.0")
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.work.testing)
+    androidTestImplementation(libs.mockk.android)
+    testImplementation(libs.mockk.agent)
 }

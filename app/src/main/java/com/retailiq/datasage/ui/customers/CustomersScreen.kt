@@ -51,7 +51,9 @@ sealed class CustomersUiState {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CustomersScreen() {
+fun CustomersScreen(
+    onNavigateToCustomer: (Int) -> Unit = {}
+) {
     // Placeholder - will be connected to ViewModel when customer features are expanded
     Scaffold(
         topBar = {

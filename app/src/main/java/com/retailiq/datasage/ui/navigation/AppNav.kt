@@ -104,11 +104,17 @@ fun MainNavigation(
                         }
                     )
                 }
-                composable("analytics") { AnalyticsScreen() }
-                composable("suppliers") { 
+                composable("analytics") {
+                    AnalyticsScreen(
+                        onNavigateToGstReports = { navController.navigate("reports/gst") }
+                    )
+                }
+
+                // ── Suppliers & Purchase Orders ─────────────────────────
+                composable("suppliers") {
                     com.retailiq.datasage.ui.supplier.SupplierListScreen(
                         onNavigateToSupplier = { id -> navController.navigate("suppliers/$id") }
-                    ) 
+                    )
                 }
                 composable("suppliers/{supplierId}") { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("supplierId") ?: return@composable
@@ -124,9 +130,9 @@ fun MainNavigation(
                     com.retailiq.datasage.ui.purchaseorder.PurchaseOrderListScreen(
                         supplierId = id,
                         onNavigateBack = { navController.popBackStack() },
-                        onCreatePo = { supId -> 
+                        onCreatePo = { supId ->
                             val query = if (supId != null) "?supplierId=$supId" else ""
-                            navController.navigate("purchaseorders/create$query") 
+                            navController.navigate("purchaseorders/create$query")
                         },
                         onNavigateToReceive = { poId -> navController.navigate("purchase-orders/$poId/receive") }
                     )
@@ -147,7 +153,9 @@ fun MainNavigation(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable("more") { 
+
+                // ── Settings / More ─────────────────────────────────────
+                composable("more") {
                     SettingsScreen(
                         userRole = role.name,
                         onNavigateToStaffPerformance = { navController.navigate("staff/performance") },
@@ -157,6 +165,11 @@ fun MainNavigation(
                         onNavigateToPricing = { navController.navigate("pricing/suggestions") },
                         onNavigateToEvents = { navController.navigate("events") },
                         onNavigateToAlerts = { navController.navigate("alerts") },
+                        onNavigateToCustomers = { navController.navigate("customers") },
+                        onNavigateToSuppliers = { navController.navigate("suppliers") },
+                        onNavigateToForecast = { navController.navigate("forecast") },
+                        onNavigateToNlpQuery = { navController.navigate("nlp") },
+                        onNavigateToGstReports = { navController.navigate("reports/gst") },
                         onLogout = onLogout
                     )
                 }
@@ -192,7 +205,13 @@ fun MainNavigation(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable("customers") { CustomersScreen() }
+
+                // ── Customers ───────────────────────────────────────────
+                composable("customers") {
+                    CustomersScreen(
+                        onNavigateToCustomer = { id -> navController.navigate("customers/$id") }
+                    )
+                }
                 composable("customers/{customerId}") { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("customerId")?.toIntOrNull() ?: return@composable
                     com.retailiq.datasage.ui.customers.CustomerProfileScreen(
@@ -200,10 +219,15 @@ fun MainNavigation(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable("alerts") { AlertsScreen(
-                    onNavigateToCreatePo = { prodId -> navController.navigate("purchaseorders/create?prefillProductId=$prodId") }
-                ) }
-                // Chain screens — visible only to CHAIN_OWNER
+
+                // ── Alerts ──────────────────────────────────────────────
+                composable("alerts") {
+                    AlertsScreen(
+                        onNavigateToCreatePo = { prodId -> navController.navigate("purchaseorders/create?prefillProductId=$prodId") }
+                    )
+                }
+
+                // ── Chain (franchise owner) ─────────────────────────────
                 composable("chain/dashboard") {
                     com.retailiq.datasage.ui.chain.ChainDashboardScreen(
                         onNavigateToCompare = { navController.navigate("chain/compare") },
@@ -220,27 +244,42 @@ fun MainNavigation(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
+
+                // ── Pricing ─────────────────────────────────────────────
                 composable("pricing/suggestions") {
                     PricingSuggestionsScreen()
                 }
+
+                // ── Events ──────────────────────────────────────────────
                 composable("events") {
                     com.retailiq.datasage.ui.events.EventsScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
+
+                // ── Forecast ────────────────────────────────────────────
+                composable("forecast") {
+                    com.retailiq.datasage.ui.forecast.ForecastScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ── NLP Query ───────────────────────────────────────────
+                composable("nlp") {
+                    com.retailiq.datasage.ui.nlp.NlpQueryScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ── OCR Review ──────────────────────────────────────────
                 composable("inventory/ocr/{jobId}") { backStackEntry ->
                     val jobId = backStackEntry.arguments?.getString("jobId") ?: return@composable
-                    // OCR review screen placeholder — currently shows a loading indicator
-                    // until the VisionViewModel finalizes the job
-                    com.retailiq.datasage.ui.inventory.InventoryScreen(
-                        onNavigateToAddProduct = {},
-                        onNavigateToProduct = {},
-                        onNavigateToOcrReview = {},
-                        onNavigateToAudit = {}
+                    com.retailiq.datasage.ui.inventory.ocr.OcrReviewScreen(
+                        jobId = jobId,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }
         }
     }
 }
-

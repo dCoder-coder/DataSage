@@ -79,4 +79,20 @@ class AlertsViewModel @Inject constructor(
             _uiState.value = AlertsUiState.Error(e.message ?: "Failed to load alerts")
         }
     }
+
+    fun dismissAlert(alertId: String) = viewModelScope.launch {
+        // Optimistically remove from UI
+        val current = _uiState.value
+        if (current is AlertsUiState.Loaded) {
+            _uiState.value = AlertsUiState.Loaded(current.alerts.filter { it.id != alertId })
+        }
+        try {
+            val id = alertId.toIntOrNull() ?: return@launch
+            alertsApi.dismissAlert(id)
+            Timber.d("Alert $alertId dismissed")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to dismiss alert $alertId — reloading")
+            loadAlerts() // Restore on failure
+        }
+    }
 }

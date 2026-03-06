@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -91,6 +92,7 @@ fun AlertsScreen(
                             AlertCard(
                                 alert = alert,
                                 isWhatsappEnabled = whatsappEnabled,
+                                onDismiss = { viewModel.dismissAlert(alert.id) },
                                 onCreatePo = { 
                                     val prodId = alert.metadata?.get("product_id") as? Int ?: alert.metadata?.get("product_id")?.toString()?.toDoubleOrNull()?.toInt()
                                     if (prodId != null) onNavigateToCreatePo(prodId)
@@ -128,6 +130,7 @@ fun AlertsScreen(
 private fun AlertCard(
     alert: AlertItem,
     isWhatsappEnabled: Boolean = false,
+    onDismiss: () -> Unit = {},
     onCreatePo: () -> Unit = {},
     onNotifyWhatsapp: (String) -> Unit = {}
 ) {
@@ -151,7 +154,7 @@ private fun AlertCard(
                     color = severityColor
                 ) {}
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(
                         alert.type.replaceFirstChar { it.uppercase() },
                         fontWeight = FontWeight.SemiBold,
@@ -164,6 +167,9 @@ private fun AlertCard(
                         color = severityColor,
                         fontWeight = FontWeight.Bold
                     )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             

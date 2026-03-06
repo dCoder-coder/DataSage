@@ -54,11 +54,10 @@ class StaffRepository @Inject constructor(
     suspend fun getDailyPerformance(date: String): Result<List<StaffPerformanceSummaryDto>> = withContext(Dispatchers.IO) {
         try {
             val response = api.getDailyPerformance(date)
-            if (response.isSuccessful) {
-                response.body()?.let { Result.success(it) }
-                    ?: Result.failure(Exception("Empty response body"))
+            if (response.success && response.data != null) {
+                Result.success(response.data)
             } else {
-                Result.failure(Exception("API Error: ${response.code()} ${response.message()}"))
+                Result.failure(Exception(response.error?.message ?: "Failed to load staff performance"))
             }
         } catch (e: IOException) {
             Result.failure(Exception(e.message ?: "Network error"))

@@ -20,7 +20,7 @@ interface StaffApiService {
     @GET("api/v1/staff/performance")
     suspend fun getDailyPerformance(
         @Query("date") date: String
-    ): Response<List<StaffPerformanceSummaryDto>>
+    ): ApiResponse<List<StaffPerformanceSummaryDto>>
 
     @POST("api/v1/staff/targets")
     suspend fun setDailyTarget(

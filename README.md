@@ -132,31 +132,52 @@ data class ApiResponse<T>(
 ## Navigation Map
 
 ```
+── Bottom Nav (5 tabs) ────────────────────────────────
 home              → DashboardScreen
 sales             → SalesScreen
 inventory         → InventoryScreen
-  inventory/add   → ProductFormScreen + InventoryViewModel (creates product via API)
+  inventory/add   → ProductFormScreen
   inventory/{id}  → ProductDetailScreen
   inventory/audit → InventoryAuditScreen
+  inventory/ocr/{id} → OcrReviewScreen
 analytics         → AnalyticsScreen
+more              → SettingsScreen
+
+── Settings / More ────────────────────────────────────
+customers         → CustomersScreen
+  customers/{id}  → CustomerProfileScreen
 suppliers         → SupplierListScreen
   suppliers/{id}  → SupplierProfileScreen
+alerts            → AlertsScreen
+staff/performance → StaffPerformanceScreen
+settings/loyalty  → LoyaltySettingsScreen
+pricing/suggestions → PricingSuggestionsScreen
+forecast          → ForecastScreen
+events            → EventsScreen
+nlp               → NlpQueryScreen
+settings/gst      → GstConfigScreen
+reports/gst       → GstReportsScreen
+settings/whatsapp → WhatsAppConfigScreen
+  settings/whatsapp/log → WhatsAppLogScreen
+chain/dashboard   → ChainDashboardScreen (CHAIN_OWNER only)
+
+── Purchase Orders ────────────────────────────────────
 purchase-orders   → PurchaseOrderListScreen
   purchaseorders/create → CreatePurchaseOrderScreen
   purchase-orders/{id}/receive → GoodsReceiptScreen
-customers         → CustomersScreen
-  customers/{id}  → CustomerProfileScreen
-alerts            → AlertsScreen
-more              → SettingsScreen
-  settings/gst        → GstConfigScreen
-  settings/loyalty    → LoyaltySettingsScreen
-  settings/whatsapp   → WhatsAppConfigScreen
-  staff/performance   → StaffPerformanceScreen
-  pricing/suggestions → PricingSuggestionsScreen
-  events              → EventsScreen
-  reports/gst         → GstReportsScreen
-chain/dashboard   → ChainDashboardScreen (CHAIN_OWNER only)
 ```
+
+---
+
+## CI/CD — GitHub Actions
+
+| Workflow | Trigger | Jobs |
+|---|---|---|
+| `ci.yml` | Push to `main`/`develop`, PRs to `main` | Lint → Build → Unit Tests (with JUnit report) |
+| `release.yml` | Tag `v*` | Test → Build release APK → GitHub Release |
+| `code-quality.yml` | PRs to `main` | Detekt (optional) + APK size report |
+
+All workflows use JDK 17 (Temurin), Gradle caching via `gradle/actions/setup-gradle@v4`, and artifact uploads.
 
 ---
 
@@ -248,9 +269,20 @@ return try {
 
 ---
 
-## Recent Changes (2026-03-02)
+## Recent Changes (2026-03-06)
 
-### Bug Fixes
+### Frontend Polish (2026-03-05)
+- **Bottom nav reduced to 5 tabs**: Home, Sales, Inventory, Analytics, More. Suppliers and Pricing moved to Settings/More.
+- **SettingsScreen reorganized**: Grouped into sections (Quick Actions, Business, Reports, Integrations, System) with distinct per-feature icons and subtitles.
+- **NLP Query screen**: New chat-style AI query screen with `NlpQueryViewModel` consuming `/api/v1/query/` endpoint.
+- **Forecast screen wired**: Added navigation route and back button to `ForecastScreen`.
+- **OCR review route fixed**: `inventory/ocr/{jobId}` now renders `OcrReviewScreen` instead of `InventoryScreen`.
+- **Alert dismiss**: Backend `DELETE /api/v1/inventory/alerts/<id>` + optimistic UI removal with close button.
+- **Loyalty 404 handled**: Returns default empty settings instead of error when no program configured.
+- **Staff performance deserialization fixed**: `StaffApiService.getDailyPerformance` return type corrected to `ApiResponse<List<...>>`.
+- **Sales screen refresh fixed**: `DisposableEffect` + `LifecycleEventObserver` ensures product reload on every `ON_RESUME`.
+
+### Bug Fixes (2026-03-02)
 - **More button crash**: Added missing `composable("events")` route in `AppNav.kt`. Navigation to `EventsScreen` now works.
 - **Add product does nothing**: Wired `ProductFormScreen`'s `onSaveProduct` callback through `InventoryViewModel.createProduct()` → `InventoryRepository.createProduct()` → `InventoryApiService.createProduct()`. Product is now persisted to backend.
 - **GST HSN search network error**: Fixed `GstApiService.searchHsn` return type from `ApiResponse<HsnSearchResponse>` (wrapper object) to `ApiResponse<List<HsnDto>>` to match the backend's flat list response. Fixed `GstRepository.searchHsn` to use `response.data` directly instead of `response.data.results`.

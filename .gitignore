@@ -35,11 +35,22 @@ hs_err_pid*.log
 replay_pid*.log
 
 # ── Build / compile / test output logs ────────
-build_output*.log
-compile_err*.txt
-compile_output*.txt
-test_output*.log
-test_output*.txt
+*.log
+*.txt
+!README.txt
+!LICENSE.txt
+build_output*
+compile_*
+test_*
+debug_log*
+assemble_*
+check_log*
+hardening_*
+new_test_*
+targeted_*
+unit_test_*
+final_test_*
+*.bak
 
 # ── Kotlin ────────────────────────────────────
 .kotlin/
