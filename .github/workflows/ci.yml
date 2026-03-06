@@ -29,6 +29,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
+
       - name: Run Android Lint
         run: ./gradlew lintDebug --no-daemon
 
@@ -56,6 +59,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
+
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
@@ -81,6 +87,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon

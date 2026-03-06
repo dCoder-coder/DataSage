@@ -24,6 +24,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
+
       - name: Run Detekt (if configured)
         run: |
           if ./gradlew tasks --all --no-daemon | grep -q "detekt"; then
@@ -47,6 +50,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon

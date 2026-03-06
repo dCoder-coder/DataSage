@@ -40,6 +40,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Fix Gradle wrapper permissions
+        run: sed -i 's/\r$//' gradlew && chmod +x gradlew
+
       - name: Run unit tests
         if: ${{ inputs.run_tests }}
         run: ./gradlew testDebugUnitTest --no-daemon
